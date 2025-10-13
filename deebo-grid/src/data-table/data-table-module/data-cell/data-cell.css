@@ -1,0 +1,9 @@
+.has-symbol::after{
+    content: attr(data-symbol);
+    padding-left: 3px;
+}
+
+.has-symbol-b::before{
+    content: attr(data-symbol);
+    padding-right: 3px;
+}

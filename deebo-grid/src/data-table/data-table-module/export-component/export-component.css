@@ -1,0 +1,14 @@
+.export-opts{
+    font-size: large;
+    padding: 33px 11px 17px 1px;
+    max-width:100%;
+    clear: both;
+    overflow-x:auto;
+    white-space:nowrap
+}
+
+.export-opts button{
+    font-size: large;
+    margin-right:31px;
+    vertical-align:middle
+}

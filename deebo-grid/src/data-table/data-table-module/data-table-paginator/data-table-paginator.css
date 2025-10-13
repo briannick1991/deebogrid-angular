@@ -1,0 +1,132 @@
+.data-table-footer{
+    padding:15px;
+    border-bottom-left-radius:7px;
+    border-bottom-right-radius:7px;
+    box-shadow:0 1px 3px 1px var(--grid-color);
+    -moz-box-shadow:0 1px 3px 1px var(--grid-color);
+    -webkit-box-shadow:0 1px 3px 1px var(--grid-color)
+}
+
+select[name=paginator]{
+    margin-left: 7px;
+}
+
+.btn-page-back, .btn-page-forward, .btn-page-first, .btn-page-last{
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    vertical-align: middle;
+    color: var(--accent-color);
+}
+
+.btn-page-back, .btn-page-forward{
+    margin: 0 3px;
+}
+
+.btn-page-first{
+    margin: 0 3px 0 0;
+}
+
+.btn-page-last{
+    margin: 0 7px 0 3px;
+}
+
+.btn-page-back:hover, .btn-page-forward:hover, .btn-page-first:hover, .btn-page-last:hover{
+    box-shadow:0 0 3px 2px var(--grid-color);
+    -moz-box-shadow:0 0 3px 2px var(--grid-color);
+    -webkit-box-shadow:0 0 3px 2px var(--grid-color)
+}
+
+.btn-page-back{
+    position: relative;
+}
+
+.btn-page-back .material-icons{
+    top: 0;
+    left: 5px;
+    position: absolute;
+}
+
+.paginator-half-wid{
+    white-space:nowrap;
+    overflow:auto;
+    padding:7px
+}
+
+.paginator-half-wid:last-of-type{
+    padding-top:21px
+}
+
+.skip-to-contain{
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.skip-to-options-hide{
+    opacity: 0;
+    max-height: 0;
+    min-width: 0;
+    max-width: 0;
+    overflow: hidden;
+}
+
+.skip-to-options{
+    right: 0;
+    z-index: 10;
+    bottom:33px;
+    border-radius: 3px;
+    position: absolute;
+    background: white;
+    vertical-align: middle;
+    opacity: 1 !important;
+    overflow: auto !important;
+    min-width: 175px !important;
+    max-width: 200px !important;
+    max-height: 200px !important;
+    min-height: 150px;
+    box-shadow:0 0 3px 2px var(--grid-color);
+    -moz-box-shadow:0 0 3px 2px var(--grid-color);
+    -webkit-box-shadow:0 0 3px 2px var(--grid-color);
+    transition: opacity 0.2s ease;
+}
+
+.skip-to-options div{
+    cursor: pointer;
+    padding: 15px 7px;
+    text-align: left !important;
+    border-bottom: 1px solid var(--grid-color);
+}
+
+.skip-to-options div:hover{
+    text-decoration: underline;
+}
+
+.skip-to-options div:last-of-type{
+    border-bottom: none;
+}
+
+@media screen and (min-width:960px){
+    .paginator-half-wid{  
+        display:inline;
+        white-space:normal;
+        overflow:initial
+    }
+
+    .paginator-half-wid:last-of-type{
+        padding-top:0
+    }
+
+    .btn-page-back, .btn-page-forward{
+        margin: 0 7px;
+    }
+
+    .btn-page-first{
+        margin: 0 7px 0 0;
+    }
+
+    .btn-page-last{
+        margin: 0 15px 0 7px;
+    }
+}

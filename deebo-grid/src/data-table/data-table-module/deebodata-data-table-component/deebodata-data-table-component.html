@@ -1,0 +1,80 @@
+<div *ngIf="hiddenCols.length" class="hidden-cols" >
+    <button *ngFor="let hcol of hiddenCols" type="button" 
+    class="btn-maximize-col" (click)="maximizeColCells(hcol)">
+    {{hcol}}</button>
+</div>
+<div class="controls" >
+    <input type="text" #topLevelDataFilter autocomplete="off" name="topLevelDataFilter" placeholder="Search" 
+    (input)="topFilterOnKeyUp()" (keyup)="topFilterOnKeyUp()" maxlength="255" [(ngModel)]="topLevelFilter" />
+    <button type="button" [disabled]="!dataTableService.currSelRows.length || handlingSelRows" (click)="clearSelectedRows()" class="btn-ctrl-sel-rows">Deselect Rows</button>
+    <button #btnTogSelRows type="button" [disabled]="!dataTableService.currSelRows.length || handlingSelRows" (click)="toggleSelectedRows()" class="btn-ctrl-sel-rows">
+        <i class="material-icons" aria-hidden="false">check_box_outline_blank</i>&nbsp;<span>{{togSelRows}}</span>
+    </button>
+    <button [disabled]="!topLevelFilter && dataTableService.arefilSrtTrkPropsDefault()" 
+    class="btn-reset" (click)="resetCurrentData()" >Reset</button>
+</div>
+<div id="dataTableChecks" class="relly" [class.hide]="isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting">
+    <input *ngFor="let chk of dtChecks" [id]="'checkDataTableRow' + chk" class="select-row-check" 
+    [checked]="dataTableService.currSelRows.indexOf(chk) > -1" type="checkbox" [name]="'checkDataTableRow' + chk"
+    (click)="toggleSingleRowSelected(chk)" (keyup.enter)="toggleSingleRowSelected(chk)" [value]="'dataTableRow' + chk" >
+</div>
+<div #selFilContainer class="relly sel-fil-container">
+    <div class="selfil-opt-contain" [ngStyle]="ddFilStyle">
+        <div *ngFor="let opt of currFilOpts; let i = index" class="selfil-div">
+            <label [for]="'selfilOpt' + currDDFilter + i" class="'selfil-lbl-' + currDDFilter"><input [id]="'selfilOpt' + currDDFilter + i" 
+            [class]="'selfil-opt-' + currDDFilter" (input)="handleMultiSelFilter(currDDFilter, opt.value, $event.target.checked)" 
+            (click)="handleMultiSelFilter(currDDFilter, opt.value, $event.target.checked)" [name]="'selfilOpt' + currDDFilter + i" 
+            [checked]="opt.checked" [value]="opt.value" [disabled]="isMultiFiltering" type="checkbox" />{{opt.value || "(Blank)"}}</label>
+        </div>
+    </div>
+</div>
+<div #dataTable class="data-table">
+    <div #dataTableHeaders class="data-table-headers">
+        <app-data-table-header 
+        *ngFor="let col of columnHeaders; let i = index;"
+        [columnHeader]="col"
+        [colWid]="useColWid"
+        [hideMinCol]="col.hideMinCol"
+        [canFreeze]="i === 0 ? true : false"
+        (reset)="resetCurrentData()"
+        (freeze)="freezeColCells($event)"
+        (minimize)="minimizeColEls($event)"
+        (filFocus)="handleFilFocus($event)"
+        (filSelClick)="handleWinClickOnSelFil()"
+        (width)="handleSingleColResize($event)"
+        (height)="setHeaderHeight($event, true)"
+        (render)="renderCurrData($event.value, $event.field)"
+        ></app-data-table-header>
+    </div>
+    <div #dataTableBody id="dataTableBody" style="overflow: auto;" [style.height]="dTblHeight + 'px'" (scroll)="handleScroll($event)"
+    [class.table-working]="isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting">
+        <div *ngFor="let row of rows" [id]="row.id" class="data-table-row not-rendered" [attr.data-index]="row.index"
+        [ngClass]="{'data-row-selected': !dataTableService.displayOnlySelRows && dataTableService.currSelRows.indexOf(row.index) > -1, 
+                    'rendered': row.cells?.length ? true : false }"
+         [ngStyle]="{'width': row.width, 'height': row.height}" >
+            <app-data-cell *ngFor="let cell of row.cells" 
+            [cell]="cell" [rowId]="row.id" 
+            [rawText]="cell.rawText"
+            [rowHeight]="row.height || ''"
+            (edit)="execCellEdit($event)"
+            [colWid]="cell.width || useColWid"
+            (width)="handleSingleColResize($event)"
+            (height)="setSingleRowHgt($event, row.id, true)"
+            ></app-data-cell>
+            <span *ngIf="!row.cells?.length" class="invisible">0</span>
+        </div>
+        <div *ngIf="!dataTableService.currFilData.length" [style.height]="dTblHeight + 'px'"
+        class="data-table-row flex-center data-table-row-no-data" style="width: 100%; white-space: normal;">
+            <div class="center">{{dataTableService.noDataMsg}}</div>
+        </div>
+    </div>
+</div>
+<app-data-table-paginator
+*ngIf="paginatorReady"
+[totalRows]="dataTableService.currFilData.length"
+></app-data-table-paginator><!--not an actual paginator-->
+<app-export-component
+[columns]="columnHeaders"
+*ngIf="dataTableService.currFilData.length > 0"
+[count]="dataTableService.currFilData.length">
+</app-export-component>

@@ -1,0 +1,6 @@
+<div #cellEl [attr.contenteditable]="cell.editable" [ngStyle]="cellStyle" class="data-cell data-cell-{{elCol}}{{rightAlign}}{{symbolCls}}" 
+[textContent]="cell.text" [innerHTML]="cell.html" [ngClass]="{ 'col-item-freeze': cell.freeze, 'col-header-minimized': cell.minimized, }"
+(mousemove)="tblDragService.checkItemBorderCursor($event)" (mousemove)="tblDragService.handleCellSizeAdjust($event, elCol)"
+(mousedown)="tblDragService.handleCellSizeAdjust($event, elCol)" (focus)="setCellToEdit()" (blur)="emitEdit()"
+[attr.data-index]="rowId" (dblclick)="handleColResDblClick(cell.column)"
+></div>
