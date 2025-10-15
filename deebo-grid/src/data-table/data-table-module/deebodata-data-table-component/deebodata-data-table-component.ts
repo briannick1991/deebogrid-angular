@@ -237,6 +237,7 @@ export class DeebodataDataTableComponent {
             this.dataTableService.displayOnlySelRows = false
             this.dataTableService.currGroup = group
             this.currGroupValues = this.dataTableService.dataFilSrtTracker[group]?.["selDDVals"]?.filter( (g: any) => g.value !== "(Select All)")
+            setTimeout( () => { this.dataTableBody.nativeElement.scrollTop = 0 })
         }
 
         setColHeaderHgt() {//set hgt = to tallest
