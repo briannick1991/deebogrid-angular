@@ -12,6 +12,8 @@ import { ExportComponent } from '../export-component/export-component';
 import { FormsModule } from '@angular/forms';
 import { CellEdit } from '../../../interfaces/cell-edit';
 import { DataCell } from '../../../interfaces/data-cell';
+import { RowGroupMenu } from '../row-group-menu/row-group-menu';
+import { RowGroupPanel } from '../row-group-panel/row-group-panel';
 
 @Component({
   selector: 'app-deebodata-data-table-component',
@@ -19,6 +21,8 @@ import { DataCell } from '../../../interfaces/data-cell';
     DataTableHeader,
     DataCellComponent,
     DataTablePaginator,
+    RowGroupMenu,
+    RowGroupPanel,
     ExportComponent,
     CommonModule,
     FormsModule,
@@ -30,7 +34,7 @@ export class DeebodataDataTableComponent {
 
     @HostListener('window:click', ['$event'])
     onWindowClick(e: MouseEvent) {
-        if(this.listenToWindowCurrFil && document.getElementsByClassName("selfil-div").length){
+        if(this.listenToWindowCurrFil && this.currFilOpts.length){
             if(e && e.target && (e.target instanceof Element) && (/selfil-/g.test(e.target.className) || /selfil-/g.test(e.target.id)))
                 return;
             this.killSelFilOpts(true)
@@ -39,8 +43,9 @@ export class DeebodataDataTableComponent {
 
     @HostListener('window:mouseup', ['$event'])
     onWindowMouseUp(e: MouseEvent) {
-        if(this.tblDragService.listenForMouseUp)
+        if(this.tblDragService.listenForMouseUp){
             this.tblDragService.handleColResMouseUp(e)
+        }
         if(this.tblDragService.listenForColMvMouseUp)
           this.tblDragService.handleColMoveMouseUp(e)
     }
@@ -49,6 +54,11 @@ export class DeebodataDataTableComponent {
     onWindowSelectStart(e: Event) {
         if(this.tblDragService.listenForSelectStart)
             this.tblDragService.stopWindowSelection(e)
+    }
+
+    @HostListener('window:scroll', ['$event'])
+    onWindowScroll(e: Event) {
+        this.dataTableService.setTblVertBounds()
     }
 
     constructor(public dataTableService: DataTableService, 
@@ -61,6 +71,9 @@ export class DeebodataDataTableComponent {
       dtChecks: any[] = [];
       verticalRest = 0
       horizRest = 0
+      rowBuffer = 50
+      useRowWid: string = ""
+      currGroupValues: any[] = []
       paginatorReady = false;
       handlingSelRows = false
       hiddenCols: string[] = [];
@@ -72,14 +85,19 @@ export class DeebodataDataTableComponent {
       currPage: string = "Page 1"
       currDDFilter: string = "";
       topLevelFilter: string = ""
+      isScrolling = false
       isMultiFiltering = false;
       ddFilStyle: any = {}
       filterBuildUp: any[] = []
       togSelRows: string = "Selected Rows"
       dTblHeight: number = 500;
+      changedIds: string[] = []
+      lastElRowIndex: number = 0;
       columnHeaders: ColumnHeader[] = []
+      columnNames: string[] = []
       linkCell: any;
       linkCells: any[] = []
+      canGroupBy: string[] = []
       @Input() editable: boolean = true;
       @Output("cellEdit") cellEdit: EventEmitter<CellEdit> = new EventEmitter()
       @ViewChild("dataTable", { static: true }) dataTable!: ElementRef<HTMLElement>;
@@ -88,23 +106,23 @@ export class DeebodataDataTableComponent {
       @ViewChild("btnTogSelRows", { static: true }) btnTogSelRows!: ElementRef<HTMLButtonElement>;
       @ViewChild("dataTableHeaders", { static: true }) dataTableHeaders!: ElementRef<HTMLElement>;
       @ViewChild("topLevelDataFilter", { static: true }) topLevelDataFilter!: ElementRef<HTMLInputElement>;
-      badStrings: string[] = ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"]
 
       ngOnInit() {
         this.dataTableService.getSampleData().subscribe( data => {
-          let tdata = this.convertNeededCols(data/*.result*/)
+          let tdata = this.convertNeededCols(data.result)
           this.dataTableService.mainData = tdata.filter( function(d: any) { return true })
           this.dataTableService.currFilData = tdata.filter( function(d: any) { return true })
           this.dataTableService.mainDataLen = this.dataTableService.mainData.length
-          this.buildInitUiDataTable(tdata, "navy", "tan")//any 2 css colors
+          this.buildInitUiDataTable(tdata, "navy", "bisque")//any 2 css colors
           if(!this.dataTableService.errorLoading)
             this.dataTableService.noDataMsg = "No data to display for this configuration.";
           this.tblDragService.dTblHeightOutput.subscribe( h => this.setTableHeight(h) )
           this.tblDragService.columnMove.subscribe( c => this.processColMove(c) )
+          this.dataTableService.currGrouping.subscribe( g => this.processGrouping(g) )
         })
       }
 
-        getAllColsAtRuntime(excludeDuid: any, excludeHidden: any) {
+        getAllColsAtRuntime(excludeHidden: any) {
             let cols = (typeof this.dataTableService.mainData[0] === "object" ? Object.keys(this.dataTableService.mainData[0]) : 
             (Object.keys(this.dataTableService.dataFilSrtTracker)));
             if(!excludeHidden)
@@ -171,7 +189,10 @@ export class DeebodataDataTableComponent {
 
         setTableHeight(h: number) {
             this.dTblHeight = h
-            setTimeout( () => { this.setRowSelChecksPlacement() })
+            setTimeout( () => { 
+                this.setRowSelChecksPlacement() 
+                this.dataTableService.setTblVertBounds()
+            })
         }
 
         processColMove(event: any) {
@@ -185,7 +206,7 @@ export class DeebodataDataTableComponent {
                 this.columnHeaders = this.columnHeaders.filter( c => this.common.elifyCol(c.column) !== this.dataTableService.currColumnEdit)
                 const rwCol = this.common.replaceUniSep(this.dataTableService.currColumnEdit)
                 const addCol: ColumnHeader = { column: rwCol, width: (this.dataTableService.dataFilSrtTracker[rwCol]["colWidth"] || this.useColWid), 
-                    hideMinCol: false, freeze: false, minimized: false, dataType: this.figureFilterType(rwCol) }
+                    hideMinCol: false, freeze: false, minimized: false, dataType: this.dataTableService.figureFilterType(rwCol) }
                 if(inAft === -1){//they want it first
                     this.columnHeaders.unshift(addCol)
                 } else {
@@ -203,6 +224,19 @@ export class DeebodataDataTableComponent {
                     setTimeout( () => { dtB.scrollLeft = willSclTo })
                 }
             }
+        }
+
+        processGrouping(group: any) {
+            if(!group){
+                this.currGroupValues = []
+                this.dataTableService.currGroup = ""
+                return this.resetCurrentData()
+            }
+            this.rows = []
+            this.dataTableService.currSelRows = []
+            this.dataTableService.displayOnlySelRows = false
+            this.dataTableService.currGroup = group
+            this.currGroupValues = this.dataTableService.dataFilSrtTracker[group]?.["selDDVals"]?.filter( (g: any) => g.value !== "(Select All)")
         }
 
         setColHeaderHgt() {//set hgt = to tallest
@@ -370,32 +404,32 @@ export class DeebodataDataTableComponent {
       }
 
       setRowSelChecksPlacement() {
-        // let i = 0
-        // const radd = 5
-        // const els = document.getElementsByClassName("select-row-check")
-        // const len = els.length
-        // const dtBody = this.dataTableBody.nativeElement
-        // const tbds = dtBody.getBoundingClientRect()
-        // const initT = this.initCheckTop()
-        // const col1Frozen = document.getElementsByClassName("col-item-freeze").length
-        // for(i; i < len; i++){
-        //     const chk = <HTMLInputElement>els[i]
-        //     const row = document.getElementById(chk.value)
-        //     if(row){
-        //         const tTop = tbds.top
-        //         const rbds = row.getBoundingClientRect()
-        //         const hh = (rbds.height/2)
-        //         const top = Math.floor(initT + ((rbds.bottom - (hh+radd)) - tTop))
-        //         chk.style.top = Math.floor(top) + "px"
-        //         if((rbds.top+(hh-radd)) < tTop || ((rbds.bottom - (hh-radd)) >= (tTop + tbds.height)) || (dtBody.scrollLeft > 35 && !col1Frozen)){
-        //             chk.classList.add("hide")
-        //             continue
-        //         }
-        //         chk.className = "select-row-check"
-        //     } else {
-        //         chk.classList.add("hide")
-        //     }
-        // }
+        let i = 0
+        const radd = 5
+        const els = document.getElementsByClassName("select-row-check")
+        const len = els.length
+        const dtBody = this.dataTableBody.nativeElement
+        const tbds = dtBody.getBoundingClientRect()
+        const initT = this.initCheckTop()
+        const col1Frozen = document.getElementsByClassName("col-item-freeze").length
+        for(i; i < len; i++){
+            const chk = <HTMLInputElement>els[i]
+            const row = document.getElementById(chk.value)
+            if(row){
+                const tTop = tbds.top
+                const rbds = row.getBoundingClientRect()
+                const hh = (rbds.height/2)
+                const top = Math.floor(initT + ((rbds.bottom - (hh+radd)) - tTop))
+                chk.style.top = Math.floor(top) + "px"
+                if((rbds.top+(hh-radd)) < tTop || ((rbds.bottom - (hh-radd)) >= (tTop + tbds.height)) || (dtBody.scrollLeft > 35 && !col1Frozen)){
+                    chk.classList.add("hide")
+                    continue
+                }
+                chk.className = "select-row-check"
+            } else {
+                chk.classList.add("hide")
+            }
+        }
     }
 
     initCheckTop() {
@@ -495,7 +529,7 @@ export class DeebodataDataTableComponent {
           return cols.map( (c: any) => this.common.stripSpecChars(c) )
       }
 
-      setDataRowHgts() {
+    setDataRowHgts() {
         let i = 0;
         const rows = document.getElementsByClassName("data-table-row")
         const rLen = rows.length
@@ -511,68 +545,24 @@ export class DeebodataDataTableComponent {
         }
     }
 
-      figureCellText(text: any, notNum: boolean, symbol?: any) {
-        if(this.common.isADateObject(text))
-            return { prop: "textContent", value: text.toLocaleDateString() }
-        if((text && this.badStrings.indexOf(text) < 0) || (text === 0)){
-            if(notNum){
-                const isProd = true;
-                if(/[<>]/g.test(text) || (!/(blob:)?((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-:]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w\-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w\.\/-]*))?)/g.test(text)))
-                    return { prop: "textContent", value: text }
-                let useText = text
-                const urls = text.matchAll(/(blob:)?((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-:]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w\-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w\.\/-]*))?)/g)
-                if(urls){
-                    try{
-                        let imgs = []
-                        let ancs = []
-                        const blobSchm = (isProd ? "blob:https://" : "blob:http://")
-                        const blobUrl = blobSchm + location.host
-                        let i = 0; let a = 0
-                        for(const url of urls){
-                            const low = (url[0] && typeof url[0] === "string") ? url[0].toLocaleLowerCase() : "";
-                            if((this.common.mystartsWith(low, "https") || this.common.mystartsWith(low, blobUrl)) && /(blob|\.)/g.test(low)){
-                                if(imgs.indexOf(url[0]) < 0 && (this.common.mystartsWith(low, blobUrl) ||
-                                /\.(webp|jpeg|jpg|png|jfif|pjpeg|pjp|avif)/g.test(url[0].toLocaleLowerCase()))){
-                                    imgs.push(url[0].split("?")[0])
-                                } else {
-                                    if(ancs.indexOf(url[0]) < 0)
-                                        ancs.push(url[0]/*.split("?")[0]*/)
-                                }
-                            }
-                        }
-                        const ilen = imgs.length
-                        const alen = ancs.length
-                        for(i; i < ilen; i++)
-                            useText = useText.replace(new RegExp(imgs[i], "g"), ' <img src="'+imgs[i]+'" alt="Image in cell data" /> ')
-                        for(a; a < alen; a++){//only get ones with space at first
-                            const anc = ancs[a]
-                            useText = useText.replace(new RegExp((anc.replace(/\?/g, "\\?") + " "), "g"), (' <a href="'+anc+'" target="_blank">'+anc+'</a> '))
-                            if(useText.endsWith(anc))
-                                useText = useText.replace(new RegExp(" " + anc.replace(/\?/g, "\\?"), "g"), (' <a href="'+anc+'" target="_blank">'+anc+'</a>'))
-                            if(useText === anc)
-                                useText = useText.replace(new RegExp(anc.replace(/\?/g, "\\?"), "g"), ('<a href="'+anc+'" target="_blank">'+anc+'</a>'))
-                        }
-                        if(imgs.length || ancs.length)
-                            return { prop: "innerHTML", value: useText, ancs: ancs }
-                        return { prop: "textContent", value: this.common.sanitizeUi(text) };
-                    }catch(e){ return { prop: "textContent", value: this.common.sanitizeUi(text) } }
-                }
-                return { prop: "textContent", value: this.common.sanitizeUi(text) }
-            }
-            try{
-                const minFracDigs = (symbol && ["$","€","£","¥","₣","₹"].indexOf(symbol) > -1) ? 2 : 0;
-                if(typeof text === "number")
-                    return { prop: "textContent", value: text.toLocaleString(undefined, { minimumFractionDigits: minFracDigs, maximumFractionDigits: 2 }) }
-                const numVal = /\./g.test(text) ? parseFloat(text) : parseInt(text);
-                if(!isNaN(numVal))
-                    return { prop: "textContent", value: numVal.toLocaleString(undefined, { minimumFractionDigits: minFracDigs, maximumFractionDigits: 2 }) }
-                return { prop: "textContent", value: this.common.sanitizeUi(text) }
-            } catch(e){
-                return { prop: "textContent", value: this.common.sanitizeUi(text) }
+    setDataRowHgtsById() {
+        const rLen = this.changedIds.length
+        for(var i = rLen; i >= 0; i--){
+            const id = this.changedIds[i]
+            const row = this.rows.find( r => r.id === id)
+            if(row){
+                const strtrowH = document.getElementById(id)?.getBoundingClientRect().height;
+                let rHgt = parseInt(strtrowH?.toString() || this.desRowHeight)
+                row.height = Math.ceil(rHgt) + "px"
+                this.changedIds.pop()
             }
         }
-        return { prop: "textContent", value: " " };
     }
+
+        setLastRowIndex() {
+            this.lastElRowIndex = (this.rows.length - 1)
+            return this.lastElRowIndex;
+        }
 
       buildInitUiDataTable(data: any[], color1: any, color2: any) {
           try{
@@ -584,11 +574,12 @@ export class DeebodataDataTableComponent {
               const maxCols = this.setMaxCols(wid)
               this.useColWid = Math.ceil((this.dataTableBody.nativeElement.getBoundingClientRect().width-16)/Math.min(colLen, maxCols)) + "px"
               for(i; i < colLen; i++)
-                  this.columnHeaders.push({ column: cols[i], width: this.useColWid, hideMinCol: false, freeze: false, minimized: false, dataType: this.figureFilterType(cols[i]) })
-              const addCell = (text: any, prop: string | null, row: DataRow | null, indx: number, skipText?: boolean) => {
+                  this.columnHeaders.push({ column: cols[i], width: this.useColWid, hideMinCol: false, freeze: false, minimized: false, dataType: this.dataTableService.figureFilterType(cols[i]) })
+              this.columnNames = this.columnHeaders.map( c => c.column)
+              const addCell = (text: any, prop: string | null, row: DataRow | null, indx: number) => {
                 if(prop && row){
-                    const notNum = (this.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
-                    const useTxt = this.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
+                    const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
+                    const useTxt = this.dataTableService.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
                     row.cells?.push({
                       column: prop,
                       freeze: false,
@@ -596,43 +587,44 @@ export class DeebodataDataTableComponent {
                       rawText: text,
                       width: this.useColWid,
                       editable: this.editable,
-                      dataType: this.figureFilterType(prop),
-                      text: skipText ? "" : (useTxt.prop === "textContent" ? useTxt.value : ""),
-                      html: skipText ? "" : (useTxt.prop !== "textContent" ? useTxt.value : ""),
+                      dataType: this.dataTableService.figureFilterType(prop),
+                      text: (useTxt.prop === "textContent" ? useTxt.value : ""),
+                      html: (useTxt.prop !== "textContent" ? useTxt.value : ""),
                     })
                     this.dataTableService.dataFilSrtTracker[prop].colWidth = this.useColWid
                 }
 
-                //   if(row && prop && row.cells && row.cells.length === 1)
-                //       this.dtChecks.push(indx)
+                  if(row && prop && row.cells && row.cells.length === 1)
+                      this.dtChecks.push(indx)
               }
-              const useRowWid = this.getAllColWidth(colLen) + "px"
-              for(n; n < init; n++){
-                  if(data[n] && typeof data[n] === "object"){
-                      this.rows.push({ id: "dataTableRow" + n, index: n, width: useRowWid, cells: [] })
-                      let k = 0
-                      for(k; k < colLen; k++)
-                          addCell(data[n][cols[k]], cols[k], this.rows[n], n)
-                  }
+              this.useRowWid = this.getAllColWidth(colLen) + "px"
+              const limit = Math.min(init, len)
+              for(n; n < limit; n++){
+                this.rows.push({ id: "dataTableRow" + n, index: n, width: this.useRowWid, cells: [] })
+                let k = 0
+                for(k; k < colLen; k++)
+                    addCell(data[n][cols[k]], cols[k], this.rows[n], n)
               }
+              this.setLastRowIndex()
               this.paginatorReady = true;
               this.handleTheme(color1, color2)
               this.handleColAnyDDFilters(data, cols)
               setTimeout( () => { 
                 this.testHideMinBtn() 
                 this.setColHeaderHgt()
+                this.dataTableService.setTblVertBounds()//critical
               })
               setTimeout( () => { 
                 this.setDataRowHgts() 
-                setTimeout( () => { //add rows that won't render yet
-                    if(len > init){
-                        let z = init
-                        for(z; z < len; z++){
-                            if(data[z] && typeof data[z] === "object")
-                                this.rows.push({ id: "dataTableRow" + z, index: z, width: useRowWid, cells: [], height: "78px" })
-                        }
-                    }
-                }, 350)
+                if(len > init){
+                    let z = this.lastElRowIndex + 1
+                    const phund = (z+this.rowBuffer)
+                    const goTo = Math.min(len, phund)
+                    for(z; z < goTo; z++)
+                        this.rows.push({ id: "dataTableRow" + z, index: z, width: this.useRowWid, cells: [], height: "78px" })
+                    this.setLastRowIndex()
+                }
+                this.dataTableService.setTblVertBounds()//critical, do it again it's ok
             }, 250)
           } catch(e) {}                
       }
@@ -661,7 +653,7 @@ export class DeebodataDataTableComponent {
             const cantDoDD = arrFrmSet.some( function(a) { return a && a.length > 40 })
             if(!cantDoDD && ((boolData || bitData) || (arrFrmSet.filter( function(a) { return !!a }).length > 0 && colData.every( function(d) { return !d || typeof d === "string" })))){
                 if(arrFrmSet.length > 1 && arrFrmSet.length <= doSels)
-                    this.swapColFilterToSelect(col, arrFrmSet.filter( (v: any) => { return !!v && this.badStrings.indexOf(v) < 0 }))
+                    this.swapColFilterToSelect(col, arrFrmSet.filter( (v: any) => { return !!v && this.dataTableService.badStrings.indexOf(v) < 0 }))
             }
         }
     }
@@ -675,6 +667,7 @@ export class DeebodataDataTableComponent {
         for(o; o < oLen; o++)
             this.dataTableService.dataFilSrtTracker[col]["selDDVals"].push({ value: vals[o], checked: true })
         this.dataTableService.dataFilSrtTracker[col].comparator = "Equals"
+        this.canGroupBy.push(col)
     }
 
     handleFilFocus(event: any) {
@@ -792,83 +785,136 @@ export class DeebodataDataTableComponent {
       }
     }
 
-      handleScroll(event: any) {
-            window.requestAnimationFrame( () => {
-                const head = this.dataTableHeaders.nativeElement
-                const bottom = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0) + 200
-                const left = event.target.scrollLeft
-                const top = event.target.scrollTop
-                const cols = Object.keys(this.dataTableService.mainData[0])
-                const colLen = cols.length
-                /*horiz scroll*/
-                if(left !== this.horizRest){
-                    if(left > 0)
-                        head.style.marginLeft = -left + "px"
-                    else
-                        head.style.removeProperty("margin-left")
-                    this.horizRest = left
-                }
-                /*horiz scroll*/
-                /*vert scroll*/
-                if(top === this.verticalRest)
-                    return;
-                const addCell = (text: any, prop: string | null, row: DataRow | null, indx: number) => {
-                    if(prop && row){
-                        const useProp = this.dataTableService.dataFilSrtTracker[prop]
-                        const notNum = (this.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
-                        const useTxt = this.figureCellText(text, notNum, useProp["colCellSymbol"])
-                        return {
-                        column: prop,
-                        rawText: text,
-                        editable: this.editable,
-                        dataType: this.figureFilterType(prop),
-                        freeze: useProp.freeze,
-                        minimized: useProp.minimize,
-                        width: useProp.colWidth || this.useColWid,
-                        text: useTxt.prop === "textContent" ? useTxt.value : "",
-                        html: useTxt.prop !== "textContent" ? useTxt.value : "",
-                        }
-                    }
-                    return ""
+      setHorizPos(event: any) {
+        const head = this.dataTableHeaders.nativeElement
+        if(event > 0)
+            head.style.marginLeft = -event + "px"
+        else
+            head.style.removeProperty("margin-left")
+        this.horizRest = event
+      }
 
-                    //   if(row && prop && row.cells && row.cells.length === 1)
-                    //       this.dtChecks.push(indx)
-                }
-                let changed = 0
-                const els = this.rows.filter( r => !r.cells?.length)
-                while(changed <= 10){
-                    const el = document.getElementById(els[changed].id)
-                    if(el && el.getBoundingClientRect().top < bottom){
-                        let k = 0
-                        const id = parseInt(el.id.replace(/dataTableRow/g, ""))
-                        const item = this.dataTableService.currFilData[id]
-                        const row = this.rows.find(r => r.index === id)
-                        if(row && !row.cells?.length){
-                            let cells: DataCell[] = []
-                            for(k; k < colLen; k++){
-                                const col = this.columnHeaders[k].column
-                                const cell = addCell(item[col], col, row, id)
-                                if(typeof cell !== "string")
-                                    cells.push(cell)
-                            }
-                            row.cells = [...cells]
-                        }
-                    }
-                    changed += 1
-                }
-                
-                /*vert scroll*/
-                this.verticalRest = top
-                // setTimeout( () => { this.setRowSelChecksPlacement() }) 
-            })
+      handleScroll(event: any) {
+          const head = this.dataTableHeaders.nativeElement
+          const top = event.target.scrollTop
+          const left = event.target.scrollLeft
+          /*horiz scroll*/
+          if(left !== this.horizRest){
+              if(left > 0)
+                  head.style.marginLeft = -left + "px"
+              else
+                  head.style.removeProperty("margin-left")
+              this.horizRest = left
+          }
+          /*horiz scroll*/
+          /*vert scroll*/
+          if(top === this.verticalRest || this.currGroupValues.length)
+              return;
+          this.isScrolling = true
+          this.execVertScroll(this.columnNames, this.columnNames.length)
+          this.verticalRest = top
+          this.checkLastRowAdded()
+          if(top%10 === 0)
+            this.setDataRowHgtsById()
+          /*vert scroll*/
         }
+
+    handleScrollEnd() {
+        if(this.currGroupValues.length)
+            return setTimeout( () => { this.dataTableService.gridScrollEndWhileGrouped.next(true) })
+        this.setDataRowHgtsById()
+        return setTimeout( () => { 
+            this.isScrolling = false
+            this.setRowSelChecksPlacement() 
+        })
+    }
+    
+    checkLastRowAdded() {
+        const dtr = "dataTableRow"
+        const len = this.dataTableService.currFilData.length
+        const els = document.getElementsByClassName("data-table-row")
+        const eLen = els.length
+        const last  = els[(eLen-1)]
+        if(last && this.rows.length < (len - 1)){
+            const bds = last.getBoundingClientRect()
+            if(bds.top < (this.dataTableService.tblBot + 300)){
+                this.useRowWid = this.getAllColWidth(this.columnHeaders.length - this.getMiniColCount()) + "px";
+                let z = this.lastElRowIndex + 1
+                const phund = (z+this.rowBuffer)
+                const goTo = Math.min(len, phund)
+                for(z; z < goTo; z++){
+                    const index = this.dataTableService.findObjIndxInData(this.dataTableService.currFilData[z])
+                    // if(this.rows.find( r => r.id === (dtr + index)))
+                    //     continue
+                    this.rows.push({ id: dtr + index, index: index, width: this.useRowWid, cells: [], height: "78px" })
+                }
+                this.setLastRowIndex()
+            }
+        }
+    }
+
+    addCell(text: any, prop: string): DataCell {
+        const useProp = this.dataTableService.dataFilSrtTracker[prop]
+        const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
+        const useTxt = this.dataTableService.figureCellText(text, notNum, useProp["colCellSymbol"])
+        return {
+            column: prop,
+            rawText: text,
+            editable: this.editable,
+            dataType: this.dataTableService.figureFilterType(prop),
+            freeze: useProp.freeze,
+            minimized: useProp.minimize,
+            width: useProp.colWidth || this.useColWid,
+            text: useTxt.prop === "textContent" ? useTxt.value : "",
+            html: useTxt.prop !== "textContent" ? useTxt.value : "",
+        }
+    }
+
+    execVertScroll(cols: string[], colLen: number) {
+        let changed = 0
+        const els = this.rows.filter( r => !r.cells?.length)
+        while(changed <= 7){
+            const el = document.getElementById(els[changed]?.id)
+            const elRect = el?.getBoundingClientRect()
+            if(el && elRect && elRect.bottom < this.dataTableService.tblBot){
+                let k = 0
+                const id = parseInt(el.id.replace(/dataTableRow/g, ""))
+                const item = this.dataTableService.mainData[id]
+                const row = this.rows.find(r => r.index === id)
+                if(item && row && !row.cells?.length){
+                    let cells: DataCell[] = []
+                    for(k; k < colLen; k++){
+                        const col = cols[k]
+                        const cell = this.addCell(item[col], col)
+                        if(typeof cell !== "string")
+                            cells.push(cell)
+                    }
+                    row.height = ""
+                    row.cells = [...cells]
+                    this.dtChecks.push(id)
+                    this.changedIds.push(row.id)
+                }
+            }
+            changed += 1
+        }
+    }
+
+    scrollToRowGroup(rClass: string) {
+        const el = document.getElementsByClassName(rClass)[0]
+        if(el){
+            const dtb = this.dataTableBody.nativeElement
+            const dttop = dtb.getBoundingClientRect().top - dtb.scrollTop
+            const etop = el.getBoundingClientRect().top
+            this.dataTableBody.nativeElement.scrollTop = etop - dttop
+        }
+    }
 
      execCellEdit(e: any) {//{ element: el, column: this.cell.column, value: val }
         if(this.dataTableService.currEditIndex || this.dataTableService.currEditIndex === 0){
             let val = e.value;
             const realProp: string = e.column
             this.dataTableService.mainData[this.dataTableService.currEditIndex][realProp] = val;
-            const dtType = this.figureFilterType(realProp)
+            const dtType = this.dataTableService.figureFilterType(realProp)
             const notNum = (dtType != "number" || /(year|yr|fy)/g.test(realProp.toLocaleLowerCase())) ? true : false
             if(val){
                 if(dtType === "date")
@@ -876,7 +922,7 @@ export class DeebodataDataTableComponent {
                 if(dtType === "number")
                     val = /\./g.test(val) ? parseFloat(val.replace(/,/g, "")) : parseInt(val.replace(/,/g, ""))
             }
-            const useTxt = this.figureCellText(val, notNum);
+            const useTxt = this.dataTableService.figureCellText(val, notNum);
             if(useTxt.prop === "textContent")
                 e.element.textContent = useTxt.value;
             else
@@ -893,7 +939,7 @@ export class DeebodataDataTableComponent {
 
       handleSingleColResize(val: any) {
         if(val && this.dataTableService.currColumnEdit){
-            const cols = this.getAllColsAtRuntime(true, null);
+            const cols = this.getAllColsAtRuntime(null);
             const colLen = cols.length - this.getMiniColCount()
             const rawCol = this.common.replaceUniSep(this.dataTableService.currColumnEdit)
             this.columnHeaders = this.columnHeaders.map( c => {
@@ -969,6 +1015,7 @@ export class DeebodataDataTableComponent {
             let rule1; let rule1a; let rule2; let rule3; let rule4; let rule5; let rule6;
             if(co1){
                 rule1 = ".col-header span, .col-header sup, .col-header button .material-icons, .paginator span, " + 
+                ".row-group-panel button span, .row-group-panel button i, " +
                 ".paginator button .material-icons, .paginator label, .paginator-half-wid{color: "+co1+"}";
                 rule1a = ".col-header select, .col-header input:not(input[type=file]), .paginator-half-wid select, #skipTo{box-shadow:0 0 1px 1px "+co1+";" +
                 "-webkit-box-shadow:0 0 1px 1px "+co1+"}";
@@ -982,7 +1029,9 @@ export class DeebodataDataTableComponent {
                     rule3 = ".data-table{ box-shadow: "+tblbxSh + co2+"; -webkit-box-shadow: "+tblbxSh + co2+"; -moz-box-shadow: "+tblbxSh + co2+"}"
                     rule6 = ".data-table-footer{background: "+co2+"; box-shadow: "+tblFbxSh + co2+"; -webkit-box-shadow: "+tblFbxSh + co2+"; -moz-box-shadow: "+tblFbxSh + co2+"}";
                 }
-                rule4 = ".bot-bord-cell{ border-bottom: 1px solid "+co2+";}"
+                rule4 = ".row-group-panel{background: "+co2+"}";
+                if(co1)
+                   rule4 = ".row-group-panel{background: "+co2+"; border-bottom: 1px dotted "+co1+"}"; 
                 rule5 = ".data-cell{ border-bottom: 1px solid "+co2+"; border-right: 1px solid "+co2+"}"
             }
             if(rule1 || rule1a || rule2 || rule3 || rule4 || rule5 || rule6){
@@ -1005,42 +1054,34 @@ export class DeebodataDataTableComponent {
             }
         }
 
-      figureFilterType(col: any): string {
-        const item = this.dataTableService.dataFilSrtTracker[col]
-        if(item){
-            switch(item.type){
-                case "string":
-                    return "text";
-                case "number":
-                    return "number";
-                case "date":
-                    return "date"
-                default:
-                    return "text";
-            }
-        }
-        return "text"
-    }
-
     renderCurrData(val: any, field?: any) {//filter val
         const tbody = this.dataTableBody.nativeElement
         const tbodyX = tbody.scrollLeft
         this.rows = []
+        this.changedIds = []
         this.dtChecks = []
+        this.horizRest = 0
         tbody.scrollTop = 0
+        this.verticalRest = 0
         let didXScrl = false;
+        this.lastElRowIndex = 0
         let n = 0
+        let init = 20;
         const len = this.dataTableService.currFilData.length;
+        if(!len)//always just add 1
+            return setTimeout( () => { this.styleEmptyFilDataRow(tbody, tbodyX) })
+        if(this.currGroupValues.length)//don't add to rows here
+            return this.dataTableService.gridEventWhileGrouped.next(true);
         const colLen = this.columnHeaders?.length
         const addCell = (text: any, prop: string | null, row: DataRow, indx: number) => {
             if(prop && row){
-                const notNum = (this.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
-                const useTxt = this.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
+                const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
+                const useTxt = this.dataTableService.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
                 row.cells?.push({
                     column: prop,
                     rawText: text,
                     editable: this.editable,
-                    dataType: this.figureFilterType(prop),
+                    dataType: this.dataTableService.figureFilterType(prop),
                     freeze: this.dataTableService.dataFilSrtTracker[prop].freeze,
                     minimized: this.dataTableService.dataFilSrtTracker[prop].minimize,
                     width: this.dataTableService.dataFilSrtTracker[prop].colWidth || this.useColWid,
@@ -1049,34 +1090,48 @@ export class DeebodataDataTableComponent {
                 })
             }
 
-            // if(row && prop && row.cells && row.cells.length === 1)
-            //     this.dtChecks.push(indx)
+            if(row && prop && row.cells && row.cells.length === 1)
+                this.dtChecks.push(indx)
             if(field && field === prop && !didXScrl){
-                setTimeout( () => tbody.scrollLeft = tbodyX, 100)
+                setTimeout( () => {
+                    tbody.scrollLeft = tbodyX
+                    this.horizRest = tbodyX
+                }, 100)
                 didXScrl = true
             }
         }
-        const useRowWid = this.getAllColWidth(colLen - this.getMiniColCount()) + "px";
-        for(n; n < len; n++){
+        this.useRowWid = this.getAllColWidth(colLen - this.getMiniColCount()) + "px";
+        const limit = Math.min(init, len)
+        for(n; n < limit; n++){
             const item = this.dataTableService.currFilData[n]
-            const index = this.findObjIndxInData(item)
-            if(item && typeof item === "object"){
-                const vis = (n < 25 ? true : false)
-                const row: DataRow = { id: "dataTableRow" + index, index: index, width: useRowWid, cells: [] }
+            const index = this.dataTableService.findObjIndxInData(item)
+            if(index > -1){
+                const row: DataRow = { id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [] }
                 this.rows.push(row)
-                if(vis){
-                    let k = 0
-                    for(k; k < colLen; k++){
-                        const col = this.columnHeaders[k].column
-                        addCell(item[col], col, row, index)
-                    }
+                let k = 0
+                for(k; k < colLen; k++){
+                    const col = this.columnHeaders[k].column
+                    addCell(item[col], col, row, n)
                 }
             }
         }
-        if(!len)//always just add 1
-            setTimeout( () => { this.styleEmptyFilDataRow(tbody, tbodyX) })
-        if(len)
+        this.setLastRowIndex()
+        if(len){
             setTimeout( () => { this.setDataRowHgts() }, 250)
+            setTimeout( () => { //add rows that won't render yet
+                if(len > init){
+                    let z = this.lastElRowIndex + 1
+                    const phund = (z+this.rowBuffer)
+                    const goTo = Math.min(len, phund)
+                    for(z; z < goTo; z++){
+                        const index = this.dataTableService.findObjIndxInData(this.dataTableService.currFilData[z])
+                        if(index > -1)
+                            this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [], height: "78px" })
+                    }
+                    this.setLastRowIndex()
+                }
+            }, 350)
+        }
         return this.setHoldingCheckCls()
     }
 
@@ -1085,27 +1140,6 @@ export class DeebodataDataTableComponent {
         if(row){
             row.style.width = this.dataTableHeaders.nativeElement.scrollWidth + "px"
             setTimeout( () => tbody.scrollLeft = tbodyX, 100)
-        }
-    }
-
-    findObjIndxInData(item: any) {
-        if(item && typeof item === "object"){
-            let i = 0; let eq = 0;
-            const propLen = Object.keys(item).length
-            const len = this.dataTableService.mainData?.length
-            for(i; i < len; i++){
-                eq = 0
-                const mD = this.dataTableService.mainData[i]
-                for(const prop in item){
-                    if(item[prop] === mD[prop])
-                        eq += 1
-                    if(eq === propLen)//they all equal
-                        return i
-                }
-            }
-            return -1
-        } else {//prim - shouldn't happen
-            return this.dataTableService.mainData.indexOf(item)
         }
     }
 
@@ -1118,6 +1152,7 @@ export class DeebodataDataTableComponent {
             })
             return r
         })
+        this.dataTableService.gridEventWhileGrouped.next(true)
     }
 
     maximizeColCells(col: string) {
@@ -1148,7 +1183,7 @@ export class DeebodataDataTableComponent {
 
     setTableWidthOnChange() {
         const body = this.dataTableBody.nativeElement
-        const cols = this.getAllColsAtRuntime(true, null)
+        const cols = this.getAllColsAtRuntime(null)
         const maxCols = this.setMaxCols(window.innerWidth)
         const bodyW = body.getBoundingClientRect().width-16
         const colLen = cols.length - this.getMiniColCount()
@@ -1190,6 +1225,8 @@ export class DeebodataDataTableComponent {
         const rLen = this.rows.length
         for(i; i < rLen; i++)
             this.rows[i].width = wid
+        this.useRowWid = wid;
+        this.dataTableService.gridEventWhileGrouped.next(true)
     }
 
     clearHiddenCols() {
@@ -1219,9 +1256,7 @@ export class DeebodataDataTableComponent {
         this.dataTableService.resetFilSrtTracker()
         this.dataTableService.currFilData = this.dataTableService.mainData.filter( d => { return true })
         this.renderCurrData(null)
-        setTimeout( () => { 
-            this.dataTableBody.nativeElement.scrollTop = 0
-        })
+        setTimeout( () => { this.dataTableBody.nativeElement.scrollTop = 0 })
     }
 
     getMiniColCount() {

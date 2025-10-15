@@ -1,16 +1,17 @@
-.export-opts{
-    padding: 33px 11px 17px 1px;
+.row-group-menu{
+    padding: 33px 11px 3px 1px;
     max-width:100%;
     clear: both;
     overflow-x:auto;
     white-space:nowrap
 }
 
-.export-opts button{
+.row-group-menu label{
+    cursor: pointer;
     margin-right:31px;
     vertical-align:middle
 }
 
-.export-opts button:last-of-type{
-    margin-right:0;
+i.error-message{
+    font-size: 20px;
 }

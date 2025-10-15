@@ -1,11 +1,11 @@
 import { Component, Input, SimpleChanges, } from '@angular/core';
 import { DataTableService } from '../../../services/data-table-service';
 import { ColumnHeader } from '../../../interfaces/column-header';
-import { DecimalPipe } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 
 @Component({
   selector: 'app-export-component',
-  imports: [DecimalPipe],
+  imports: [CommonModule, DecimalPipe],
   templateUrl: './export-component.html',
   styleUrl: './export-component.css'
 })
@@ -20,6 +20,7 @@ export class ExportComponent {
   exporting: boolean = false;
   @Input() count: number = 0
   @Input() columns: ColumnHeader[] = []
+  formats: string[] =  ["csv" ,"json" ,"psv" ,"tsv"]
 
   ngOnChanges(changes: SimpleChanges) {
     if(!this.init && changes){

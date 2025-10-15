@@ -1,17 +1,3 @@
 input[name=topLevelDataFilter]{
     float: left;
 }
-
-.table-working{
-    opacity: 0.1;
-    pointer-events: none;
-}
-
-.not-rendered{
-    visibility: hidden;
-}
-
-.rendered{
-    visibility: visible !important;
-    transition: all 0.3s ease;
-}

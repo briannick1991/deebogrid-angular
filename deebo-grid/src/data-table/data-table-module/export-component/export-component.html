@@ -1,7 +1,5 @@
 <div class="export-opts">
-    <div class="inline">Export {{count | number}} {{rowsStr}}: &nbsp;&nbsp;&nbsp;</div>
-    <button type="button" (click)="handleExportData('csv')" class="btn-export-or-print" [disabled]="exporting || !count" >CSV</button>
-    <button type="button" (click)="handleExportData('json')" class="btn-export-or-print" [disabled]="exporting || !count" >JSON</button>
-    <button type="button" (click)="handleExportData('psv')" class="btn-export-or-print" [disabled]="exporting || !count" >PSV</button>
-    <button type="button" (click)="handleExportData('tsv')" class="btn-export-or-print" [disabled]="exporting || !count" >TSV</button>
+    <div class="inline md-text v-mid">Export {{count | number}} {{rowsStr}}: &nbsp;&nbsp;&nbsp;</div>
+    <button *ngFor="let format of formats" type="button" (click)="handleExportData(format)" 
+    class="btn-export-or-print" [disabled]="exporting || !count">{{format}}</button>
 </div>

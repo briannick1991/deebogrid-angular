@@ -18,9 +18,7 @@ export class CommonService {
         titleCase(str: any) {
             if(!str || str === "")
                 return str
-            return str.replace(/\w\S*/g, function(txt: string){
-                return txt.charAt(0).toUpperCase() + txt.substring(1);
-            });
+            return str.replace(/\w\S*/g, (txt: string) => txt.charAt(0).toUpperCase() + txt.substring(1) );
         }
   
         idCol(col: string) { 
@@ -179,7 +177,7 @@ export class CommonService {
                     '>': '&gt;',
                 };
     
-                return typeof val === "string" ? val.replace(/[<>]/g, function (s) {
+                return typeof val === "string" ? val.replace(/[<>]/g, s => {
                     return entityMap[s];
                 }) : val
             } else

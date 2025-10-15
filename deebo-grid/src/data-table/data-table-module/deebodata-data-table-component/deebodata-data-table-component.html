@@ -13,7 +13,8 @@
     <button [disabled]="!topLevelFilter && dataTableService.arefilSrtTrkPropsDefault()" 
     class="btn-reset" (click)="resetCurrentData()" >Reset</button>
 </div>
-<div id="dataTableChecks" class="relly" [class.hide]="isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting">
+<div id="dataTableChecks" class="relly" [ngClass]="{'hide' : isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting || currGroupValues.length, 
+'invisible' : isScrolling}">
     <input *ngFor="let chk of dtChecks" [id]="'checkDataTableRow' + chk" class="select-row-check" 
     [checked]="dataTableService.currSelRows.indexOf(chk) > -1" type="checkbox" [name]="'checkDataTableRow' + chk"
     (click)="toggleSingleRowSelected(chk)" (keyup.enter)="toggleSingleRowSelected(chk)" [value]="'dataTableRow' + chk" >
@@ -47,7 +48,7 @@
         ></app-data-table-header>
     </div>
     <div #dataTableBody id="dataTableBody" style="overflow: auto;" [style.height]="dTblHeight + 'px'" (scroll)="handleScroll($event)"
-    [class.table-working]="isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting">
+    [class.table-working]="isMultiFiltering || dataTableService.isFiltering || dataTableService.isSorting" (scrollend)="handleScrollEnd()">
         <div *ngFor="let row of rows" [id]="row.id" class="data-table-row not-rendered" [attr.data-index]="row.index"
         [ngClass]="{'data-row-selected': !dataTableService.displayOnlySelRows && dataTableService.currSelRows.indexOf(row.index) > -1, 
                     'rendered': row.cells?.length ? true : false }"
@@ -63,7 +64,20 @@
             ></app-data-cell>
             <span *ngIf="!row.cells?.length" class="invisible">0</span>
         </div>
-        <div *ngIf="!dataTableService.currFilData.length" [style.height]="dTblHeight + 'px'"
+        <app-row-group-panel
+        *ngFor="let group of currGroupValues"
+        [groupValue]="group.value"
+        [colWid]="useColWid"
+        [useRowWid]="useRowWid"
+        [editable]="editable"
+        [horizRest]="horizRest"
+        [rowBuffer]="rowBuffer"
+        [columns]="columnNames"
+        (horizPos)="setHorizPos($event)"
+        (cellEdit)="execCellEdit($event)"
+        (openEvt)="scrollToRowGroup($event)"
+        ></app-row-group-panel>
+        <div *ngIf="!dataTableService.currFilData.length && !currGroupValues.length" [style.height]="dTblHeight + 'px'"
         class="data-table-row flex-center data-table-row-no-data" style="width: 100%; white-space: normal;">
             <div class="center">{{dataTableService.noDataMsg}}</div>
         </div>
@@ -73,6 +87,11 @@
 *ngIf="paginatorReady"
 [totalRows]="dataTableService.currFilData.length"
 ></app-data-table-paginator><!--not an actual paginator-->
+<app-row-group-menu
+*ngIf="canGroupBy.length > 0"
+[groups]="canGroupBy"
+[enableClear]="currGroupValues.length ? true : false"
+></app-row-group-menu>
 <app-export-component
 [columns]="columnHeaders"
 *ngIf="dataTableService.currFilData.length > 0"

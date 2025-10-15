@@ -29,7 +29,7 @@ export class TableDragService {
             columnMove: Subject<any> = new Subject()
             dTblHeightOutput: Subject<number> = new Subject()
 
-            checkItemBorderCursor(e: MouseEvent) {
+            checkItemBorderCursor(e: MouseEvent, noColResize?: boolean) {
                 try{
                     if(this.colMoving)
                         return
@@ -39,11 +39,14 @@ export class TableDragService {
                       const cls = "moveable-col"
                       const rcls = "moveable-row"
                       const bds = el.getBoundingClientRect()
-                      if(e.offsetX >= bds.width-offsx){
-                          el.classList.add(cls)
-                          el.classList.remove(rcls)
+                      if(noColResize){
                       } else {
-                          el.classList.remove(cls)
+                          if(e.offsetX >= bds.width-offsx){
+                              el.classList.add(cls)
+                              el.classList.remove(rcls)
+                          } else {
+                              el.classList.remove(cls)
+                          }
                       }
                       if(e.offsetY >= bds.height-offsy){
                           el.classList.add(rcls)

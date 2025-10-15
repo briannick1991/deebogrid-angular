@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CommonService } from './common-service';
 import { HttpClient } from '@angular/common/http';
-import { catchError, Observable, of } from 'rxjs';
+import { catchError, Observable, of, Subject } from 'rxjs';
 import { ColumnSymbol } from '../interfaces/column-symbol';
 
 @Injectable({
@@ -18,16 +18,19 @@ export class DataTableService {
             sortOrder: string[] = []
             mainData: any[] = []
             mainDataLen = 0
-            // currPage = 1
-            // rowsPerPage = 25
+            tblBot: number = 0;
             currFilData: any[] = []
             isSorting = false;
             isFiltering = false
             currEditIndex: any = 0
             currColumnEdit: any = null;
+            currGroup: string = ""
+            currGrouping: Subject<any> = new Subject()
+            gridEventWhileGrouped: Subject<any> = new Subject()
+            gridScrollEndWhileGrouped: Subject<any> = new Subject()
             currSelRows: any[] = []//just be an index of mainData
             displayOnlySelRows = false
-            noDataMsg: string = "Loading data..."
+            noDataMsg: string = "Loading..."
             errorLoading = false;
             dataFilSrtTracker: any = {}
             comparatorOpts: any = {
@@ -35,6 +38,7 @@ export class DataTableService {
                 number: ["Equals", "Not Equal", "Empty", "Not Empty", "Less Than", "Less Than or Equal", "Greater Than", "Greater Than or Equal"],
                 date: ["Equals", "Not on", "Empty", "Not Empty", "Before", "After"],
             }
+            badStrings: string[] = ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"]
 
             /*numeric columns can have a predefined symbol up to 2 characters long, 
             add these based on columns (object properties) coming from your api*/
@@ -44,7 +48,7 @@ export class DataTableService {
             ]
 
             getSampleData(): Observable<any> {
-              return this.http.get(/*"https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json"*/"http://127.0.0.1:8080/api/big-data-test").pipe(
+              return this.http.get("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json").pipe(
                 catchError(error => {
                     this.errorLoading = true
                     this.noDataMsg = error.message
@@ -65,6 +69,10 @@ export class DataTableService {
                         colWidth: null,
                         colCellSymbol: symbol,
                 }
+            }
+
+            setTblVertBounds() {
+                this.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0) + 250
             }
 
             buildDataFilSrtTracker(data: any) {
@@ -89,6 +97,103 @@ export class DataTableService {
                         freeze: false, colWidth: oWid, colCellSymbol: sym,
                     }
                 }
+            }
+
+            figureCellText(text: any, notNum: boolean, symbol?: any) {
+                if(this.common.isADateObject(text))
+                    return { prop: "textContent", value: text.toLocaleDateString() }
+                if((text && this.badStrings.indexOf(text) < 0) || (text === 0)){
+                    if(notNum){
+                        const isProd = true;
+                        if(/[<>]/g.test(text) || (!/(blob:)?((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-:]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w\-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w\.\/-]*))?)/g.test(text)))
+                            return { prop: "textContent", value: text }
+                        let useText = text
+                        const urls = text.matchAll(/(blob:)?((([A-Za-z]{3,9}:(?:\/\/)?)(?:[-;:&=\+\$,\w]+@)?[A-Za-z0-9.-:]+|(?:www.|[-;:&=\+\$,\w]+@)[A-Za-z0-9.-]+)((?:\/[\+~%\/.\w\-_]*)?\??(?:[-\+=&;%@.\w_]*)#?(?:[\w\.\/-]*))?)/g)
+                        if(urls){
+                            try{
+                                let imgs = []
+                                let ancs = []
+                                const blobSchm = (isProd ? "blob:https://" : "blob:http://")
+                                const blobUrl = blobSchm + location.host
+                                let i = 0; let a = 0
+                                for(const url of urls){
+                                    const low = (url[0] && typeof url[0] === "string") ? url[0].toLocaleLowerCase() : "";
+                                    if((this.common.mystartsWith(low, "https") || this.common.mystartsWith(low, blobUrl)) && /(blob|\.)/g.test(low)){
+                                        if(imgs.indexOf(url[0]) < 0 && (this.common.mystartsWith(low, blobUrl) ||
+                                        /\.(webp|jpeg|jpg|png|jfif|pjpeg|pjp|avif)/g.test(url[0].toLocaleLowerCase()))){
+                                            imgs.push(url[0].split("?")[0])
+                                        } else {
+                                            if(ancs.indexOf(url[0]) < 0)
+                                                ancs.push(url[0]/*.split("?")[0]*/)
+                                        }
+                                    }
+                                }
+                                const ilen = imgs.length
+                                const alen = ancs.length
+                                for(i; i < ilen; i++)
+                                    useText = useText.replace(new RegExp(imgs[i], "g"), ' <img src="'+imgs[i]+'" alt="Image in cell data" /> ')
+                                for(a; a < alen; a++){//only get ones with space at first
+                                    const anc = ancs[a]
+                                    useText = useText.replace(new RegExp((anc.replace(/\?/g, "\\?") + " "), "g"), (' <a href="'+anc+'" target="_blank">'+anc+'</a> '))
+                                    if(useText.endsWith(anc))
+                                        useText = useText.replace(new RegExp(" " + anc.replace(/\?/g, "\\?"), "g"), (' <a href="'+anc+'" target="_blank">'+anc+'</a>'))
+                                    if(useText === anc)
+                                        useText = useText.replace(new RegExp(anc.replace(/\?/g, "\\?"), "g"), ('<a href="'+anc+'" target="_blank">'+anc+'</a>'))
+                                }
+                                if(imgs.length || ancs.length)
+                                    return { prop: "innerHTML", value: useText, ancs: ancs }
+                                return { prop: "textContent", value: this.common.sanitizeUi(text) };
+                            }catch(e){ return { prop: "textContent", value: this.common.sanitizeUi(text) } }
+                        }
+                        return { prop: "textContent", value: this.common.sanitizeUi(text) }
+                    }
+                    try{
+                        const minFracDigs = (symbol && ["$","€","£","¥","₣","₹"].indexOf(symbol) > -1) ? 2 : 0;
+                        if(typeof text === "number")
+                            return { prop: "textContent", value: text.toLocaleString(undefined, { minimumFractionDigits: minFracDigs, maximumFractionDigits: 2 }) }
+                        const numVal = /\./g.test(text) ? parseFloat(text) : parseInt(text);
+                        if(!isNaN(numVal))
+                            return { prop: "textContent", value: numVal.toLocaleString(undefined, { minimumFractionDigits: minFracDigs, maximumFractionDigits: 2 }) }
+                        return { prop: "textContent", value: this.common.sanitizeUi(text) }
+                    } catch(e){
+                        return { prop: "textContent", value: this.common.sanitizeUi(text) }
+                    }
+                }
+                return { prop: "textContent", value: " " };
+            }
+
+            figureFilterType(col: any): string {
+                const item = this.dataFilSrtTracker[col]
+                if(item){
+                    switch(item.type){
+                        case "string":
+                            return "text";
+                        case "number":
+                            return "number";
+                        case "date":
+                            return "date"
+                        default:
+                            return "text";
+                    }
+                }
+                return "text"
+            }
+
+            findObjIndxInData(item: any) {
+                let i = 0; let eq = 0;
+                const propLen = Object.keys(item).length
+                const len = this.mainData?.length
+                for(i; i < len; i++){
+                    eq = 0
+                    const mD = this.mainData[i]
+                    for(const prop in item){
+                        if(item[prop] === mD[prop])
+                            eq += 1
+                        if(eq === propLen)//they all equal
+                            return i
+                    }
+                }
+                return -1
             }
 
             nLevelSort(data: any[], sortOrder: string[], obj: any) {

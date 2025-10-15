@@ -27,6 +27,7 @@ export class DataCellComponent {
   @Input() rowId: string = "";//starts with dataTableRow
   @Input() colWid: string = "";
   @Input() rowHeight: string = "";
+  @Input() noColResize: boolean = false;
   @Output("width") width: EventEmitter<number> = new EventEmitter()
   @Output("height") height: EventEmitter<any> = new EventEmitter()
   @Output("edit") edit: EventEmitter<any> = new EventEmitter()
@@ -82,7 +83,7 @@ export class DataCellComponent {
       const prop = this.common.replaceUniSep(this.dataTableService.currColumnEdit)
       if(prop && this.dataTableService.dataFilSrtTracker[prop]){
           if(cssProp === "width"){
-              this.dataTableService.dataFilSrtTracker[prop].colWidth = (val || parseInt(this.colWid)).toString()
+              this.dataTableService.dataFilSrtTracker[prop].colWidth = (val || parseInt(this.colWid)).toString() + "px"
               this.width.emit(val || parseInt(this.colWid))
           }    
       }

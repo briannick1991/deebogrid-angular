@@ -1,0 +1,26 @@
+<div class="row-group-panel row-group-panel-{{elifyGrouping}}" [class.open-panel]="open">
+    <button class="no-btn" (click)="openGroup()">
+        <span class="v-mid md-text">{{uiGroupValue}} ({{count | number}})</span>&nbsp;
+        <i class="material-icons v-mid" aria-hidden="false">{{open ? "keyboard_arrow_down" : "chevron_right"}}</i>
+    </button>
+</div>
+<div *ngIf="open" #panelDataGrid style="overflow: auto;margin-top: 3px" [style.height]="panelHeight" (scroll)="handleScroll($event)" (scrollend)="setDataRowHgtsById()">
+    <div *ngFor="let row of rows" [id]="row.id" class="data-table-row not-rendered rows-for-{{elifyGrouping}}" [attr.data-index]="row.index"
+    [class.rendered]="{'rendered': row.cells?.length ? true : false }"
+        [ngStyle]="{'width': row.width, 'height': row.height}" >
+        <app-data-cell *ngFor="let cell of row.cells" 
+        [cell]="cell" [rowId]="row.id" 
+        [noColResize]="true"
+        [rawText]="cell.rawText"
+        [rowHeight]="row.height || ''"
+        (edit)="execCellEdit($event)"
+        [colWid]="cell.width || colWid"
+        (height)="setSingleRowHgt($event, row.id)"
+        ></app-data-cell>
+        <span *ngIf="!row.cells?.length" class="invisible">0</span>
+    </div>
+    <div *ngIf="!panelData.length" [style.height]="panelHeight"
+    class="data-table-row flex-center data-table-row-no-data" style="width: 100%; white-space: normal;">
+        <div class="center">{{dataTableService.noDataMsg}}</div>
+    </div>
+</div>

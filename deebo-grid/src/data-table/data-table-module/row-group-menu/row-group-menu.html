@@ -1,0 +1,10 @@
+<div class="row-group-menu">
+    <div class="inline md-text v-mid semi-heavy">Group By: &nbsp;&nbsp;&nbsp;</div>
+    <label *ngFor="let grp of groups" for="groupby{{grp}}" >
+        <input type="radio" name="groupby" id="groupby{{grp}}" (click)="setGrouping(grp)" (input)="setGrouping(grp)"> 
+        {{common.titleCase(grp)}}
+    </label>
+    <button *ngIf="enableClear" (click)="setGrouping(null)" class="v-mid no-btn">
+        <i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
+    </button>
+</div>

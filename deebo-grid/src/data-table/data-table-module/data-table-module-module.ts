@@ -9,23 +9,21 @@ import { DataTableHeader } from './data-table-header/data-table-header';
 import { DataTablePaginator } from './data-table-paginator/data-table-paginator';
 import { DeebodataDataTableComponent } from './deebodata-data-table-component/deebodata-data-table-component';
 import { ExportComponent } from './export-component/export-component';
+import { RowGroupMenu } from './row-group-menu/row-group-menu';
+import { RowGroupPanel } from './row-group-panel/row-group-panel';
 
 
 
 @NgModule({
-  declarations: [ 
-    // DeebodataDataTableComponent,
-    // DataTableHeader,
-    // DataCellComponent,
-    // DataTablePaginator,
-    // ExportComponent,
-  ],
+  declarations: [ ],
   imports: [
     CommonModule,
     DeebodataDataTableComponent,
     DataTableHeader,
     DataCellComponent,
     DataTablePaginator,
+    RowGroupMenu,
+    RowGroupPanel,
     ExportComponent,
   ],
   providers: [ 
