@@ -23,6 +23,7 @@ export class RowGroupPanel {
   elifyGrouping: string = ""
   rows: DataRow[] = [];
   panelData: any[] = []
+  tblTop: number = 0
   tblBot: number = 0
   changedIds: string[] = []
   lastElRowIndex: number = 0;
@@ -134,6 +135,9 @@ export class RowGroupPanel {
   setTblBot() {
     if(this.panelDataGrid)
       this.tblBot = (this.panelDataGrid.nativeElement.getBoundingClientRect().bottom || 0) + 250
+    const panelTop = document.getElementsByClassName("row-group-panel-" + this.elifyGrouping)[0]
+    if(panelTop)
+      this.tblTop = (panelTop.getBoundingClientRect().bottom || 0) - 200
   }
     
   setHorizScrPos() {
@@ -173,7 +177,13 @@ export class RowGroupPanel {
     /*vert scroll*/
     if(top === this.verticalRest)
         return;
-    this.execVertScroll(this.columns, this.columns.length)
+    if(top > this.verticalRest){
+        this.execVertScrollDown(this.columns, this.columns.length)
+        this.clearAboveFoldRows()
+    } else {//scrolling back up
+        this.execVertScrollUp(this.columns, this.columns.length)
+        this.clearBelowFoldRows()
+    }
     this.verticalRest = top
     this.checkLastRowAdded()
     if(top%10 === 0)
@@ -198,13 +208,13 @@ export class RowGroupPanel {
       }
   }
 
-  execVertScroll(cols: string[], colLen: number) {
+  execVertScrollDown(cols: string[], colLen: number) {
       let changed = 0
       const els = this.rows.filter( r => !r.cells?.length)
       while(changed <= 7){
           const el = document.getElementById(els[changed]?.id)
           const elRect = el?.getBoundingClientRect()
-          if(el && elRect && elRect.bottom < this.tblBot){
+          if(el && elRect && elRect.top < this.tblBot){
               let k = 0
               const id = parseInt(el.id.replace(/dataTableRow/g, ""))
               const item = this.dataTableService.mainData[id]
@@ -226,6 +236,63 @@ export class RowGroupPanel {
       }
       /*vert scroll*/
   }
+
+  execVertScrollUp(cols: string[], colLen: number) {
+      let changed = 0
+      const els = this.rows.filter( r => r.aboveTable && !r.cells?.length ).reverse().filter( (r, ind) => ind < 7)
+      while(changed <= 7){
+          const el = document.getElementById(els[changed]?.id)
+          const elRect = el?.getBoundingClientRect()
+          if(el && elRect && elRect.bottom >= this.tblTop){
+              let k = 0
+              const id = parseInt(el.id.replace(/dataTableRow/g, ""))
+              const item = this.dataTableService.mainData[id]
+              const row = this.rows.find(r => r.index === id)
+              if(item && row && !row.cells?.length){
+                  let cells: DataCell[] = []
+                  for(k; k < colLen; k++){
+                      const col = cols[k]
+                      const cell = this.addCell(item[col], col)
+                      if(typeof cell !== "string")
+                          cells.push(cell)
+                  }
+                  row.height = ""
+                  row.aboveTable = false
+                  row.cells = [...cells]
+                  this.changedIds.push(row.id)
+              }
+          }
+          changed += 1
+      }
+  }
+
+  clearAboveFoldRows() {
+        const els = this.rows.filter( r => r.cells?.length && this.dataTableService.elIsAboveFold(document.getElementById(r.id), this.tblTop))
+        const len = Math.min(7, els.length)
+        for(var i = (len-1); i >= 0; i--){
+            const el = els[i]
+            if(el){
+                const row = this.rows.find( r => r.id === el.id)
+                if(row){
+                    row.cells = []
+                    row.aboveTable = true
+                }
+            }
+        }
+    }
+
+    clearBelowFoldRows() {
+        const els = this.rows.filter( r => r.cells?.length && this.dataTableService.elIsBelowFold(document.getElementById(r.id), this.tblBot))
+        const len = Math.min(7, els.length)
+        for(var i = (len-1); i >= 0; i--){
+            const el = els[i]
+            if(el){
+                const row = this.rows.find( r => r.id === el.id)
+                if(row)
+                    row.cells = []
+            }
+        }
+    }
 
   setDataRowHgtsById() {
       const rLen = this.changedIds.length

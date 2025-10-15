@@ -7,16 +7,27 @@ import { DataTableService } from '../../../services/data-table-service';
   selector: 'app-row-group-menu',
   imports: [CommonModule],
   templateUrl: './row-group-menu.html',
-  styleUrl: './row-group-menu.css'
+  styleUrls: ['./row-group-menu.css', '../export-component/export-component.css']
 })
 export class RowGroupMenu {
 
+  optsOpen = false
   @Input() groups: string[] = []
   @Input() enableClear: boolean = false
 
   constructor(public common: CommonService,
               private dataTableService: DataTableService,
   ) { }
+
+  ngOnInit() {
+    this.dataTableService.closeGroupByOpts.subscribe( e => this.optsOpen = e)
+  }
+
+  toggleGroupByOpts() {
+    this.optsOpen = !this.optsOpen
+    if(this.optsOpen)
+        setTimeout( () => this.dataTableService.listenToCloseGroupByOpts = true )
+  }
 
   setGrouping(group: string | null) {
     this.dataTableService.currGrouping.next(group)

@@ -35,17 +35,33 @@ export class DeebodataDataTableComponent {
     @HostListener('window:click', ['$event'])
     onWindowClick(e: MouseEvent) {
         if(this.listenToWindowCurrFil && this.currFilOpts.length){
-            if(e && e.target && (e.target instanceof Element) && (/selfil-/g.test(e.target.className) || /selfil-/g.test(e.target.id)))
-                return;
-            this.killSelFilOpts(true)
+            if(e && e.target && (e.target instanceof Element) && (/selfil-/g.test(e.target.className) || /selfil-/g.test(e.target.id))){
+            } else {
+                this.killSelFilOpts(true)
+            }
+        }
+
+        if(this.dataTableService.listenToCloseExportOpts){
+            if(e && e.target && (e.target instanceof Element) && /deebo-dd-export/g.test(e.target.className)){
+            } else {
+                this.dataTableService.closeExportOpts.next(false)
+                this.dataTableService.listenToCloseExportOpts = false
+            }
+        }
+
+        if(this.dataTableService.listenToCloseGroupByOpts){
+            if(e && e.target && (e.target instanceof Element) && /deebo-dd-groupby/g.test(e.target.className)){
+            } else {
+                this.dataTableService.closeGroupByOpts.next(false)
+                this.dataTableService.listenToCloseGroupByOpts = false
+            }
         }
     }
 
     @HostListener('window:mouseup', ['$event'])
     onWindowMouseUp(e: MouseEvent) {
-        if(this.tblDragService.listenForMouseUp){
+        if(this.tblDragService.listenForMouseUp)
             this.tblDragService.handleColResMouseUp(e)
-        }
         if(this.tblDragService.listenForColMvMouseUp)
           this.tblDragService.handleColMoveMouseUp(e)
     }
@@ -109,7 +125,7 @@ export class DeebodataDataTableComponent {
 
       ngOnInit() {
         this.dataTableService.getSampleData().subscribe( data => {
-          let tdata = this.convertNeededCols(data.result)
+          let tdata = this.convertNeededCols(data/*.result*/)
           this.dataTableService.mainData = tdata.filter( function(d: any) { return true })
           this.dataTableService.currFilData = tdata.filter( function(d: any) { return true })
           this.dataTableService.mainDataLen = this.dataTableService.mainData.length
@@ -812,7 +828,13 @@ export class DeebodataDataTableComponent {
           if(top === this.verticalRest || this.currGroupValues.length)
               return;
           this.isScrolling = true
-          this.execVertScroll(this.columnNames, this.columnNames.length)
+          if(top > this.verticalRest){
+              this.execVertScrollDown(this.columnNames, this.columnNames.length)
+              this.clearAboveFoldRows()
+          } else {//scrolling back up
+            this.execVertScrollUp(this.columnNames, this.columnNames.length)
+            this.clearBelowFoldRows()
+          }
           this.verticalRest = top
           this.checkLastRowAdded()
           if(top%10 === 0)
@@ -845,8 +867,6 @@ export class DeebodataDataTableComponent {
                 const goTo = Math.min(len, phund)
                 for(z; z < goTo; z++){
                     const index = this.dataTableService.findObjIndxInData(this.dataTableService.currFilData[z])
-                    // if(this.rows.find( r => r.id === (dtr + index)))
-                    //     continue
                     this.rows.push({ id: dtr + index, index: index, width: this.useRowWid, cells: [], height: "78px" })
                 }
                 this.setLastRowIndex()
@@ -871,13 +891,13 @@ export class DeebodataDataTableComponent {
         }
     }
 
-    execVertScroll(cols: string[], colLen: number) {
+    execVertScrollDown(cols: string[], colLen: number) {
         let changed = 0
-        const els = this.rows.filter( r => !r.cells?.length)
+        const els = this.rows.filter( r => !r.aboveTable && !r.cells?.length)
         while(changed <= 7){
             const el = document.getElementById(els[changed]?.id)
             const elRect = el?.getBoundingClientRect()
-            if(el && elRect && elRect.bottom < this.dataTableService.tblBot){
+            if(el && elRect && elRect.top < this.dataTableService.tblBot){
                 let k = 0
                 const id = parseInt(el.id.replace(/dataTableRow/g, ""))
                 const item = this.dataTableService.mainData[id]
@@ -897,6 +917,67 @@ export class DeebodataDataTableComponent {
                 }
             }
             changed += 1
+        }
+    }
+
+    execVertScrollUp(cols: string[], colLen: number) {
+        let changed = 0
+        const els = this.rows.filter( r => r.aboveTable && !r.cells?.length ).reverse().filter( (r, ind) => ind < 7)
+        while(changed <= 7){
+            const el = document.getElementById(els[changed]?.id)
+            const elRect = el?.getBoundingClientRect()
+            if(el && elRect && elRect.bottom >= this.dataTableService.tblTop){
+                let k = 0
+                const id = parseInt(el.id.replace(/dataTableRow/g, ""))
+                const item = this.dataTableService.mainData[id]
+                const row = this.rows.find(r => r.index === id)
+                if(item && row && !row.cells?.length){
+                    let cells: DataCell[] = []
+                    for(k; k < colLen; k++){
+                        const col = cols[k]
+                        const cell = this.addCell(item[col], col)
+                        if(typeof cell !== "string")
+                            cells.push(cell)
+                    }
+                    row.height = ""
+                    row.aboveTable = false
+                    row.cells = [...cells]
+                    this.dtChecks.push(id)
+                    this.changedIds.push(row.id)
+                }
+            }
+            changed += 1
+        }
+    }
+
+    clearAboveFoldRows() {
+        const els = this.rows.filter( r => r.cells?.length && this.dataTableService.elIsAboveFold(document.getElementById(r.id), this.dataTableService.tblTop))
+        const len = Math.min(7, els.length)
+        for(var i = (len-1); i >= 0; i--){
+            const el = els[i]
+            if(el){
+                const row = this.rows.find( r => r.id === el.id)
+                if(row){
+                    row.cells = []
+                    row.aboveTable = true
+                    this.dtChecks = this.dtChecks.filter( c => c !== el.id)
+                }
+            }
+        }
+    }
+
+    clearBelowFoldRows() {
+        const els = this.rows.filter( r => r.cells?.length && this.dataTableService.elIsBelowFold(document.getElementById(r.id), this.dataTableService.tblBot))
+        const len = Math.min(7, els.length)
+        for(var i = (len-1); i >= 0; i--){
+            const el = els[i]
+            if(el){
+                const row = this.rows.find( r => r.id === el.id)
+                if(row){
+                    row.cells = []
+                    this.dtChecks = this.dtChecks.filter( c => c !== el.id)
+                }
+            }
         }
     }
 
@@ -938,6 +1019,16 @@ export class DeebodataDataTableComponent {
         }
     }
 
+    elIsInFold(el: HTMLElement | null): boolean {
+        if(el){
+            const elRect = el.getBoundingClientRect()
+            if(el && elRect && elRect.bottom > this.dataTableService.tblTop && elRect.top < this.dataTableService.tblBot)
+                return true
+            return false
+        }
+        return false;
+    }
+
       handleSingleColResize(val: any) {
         if(val && this.dataTableService.currColumnEdit){
             const cols = this.getAllColsAtRuntime(null);
@@ -949,13 +1040,16 @@ export class DeebodataDataTableComponent {
                     this.dataTableService.dataFilSrtTracker[c.column]["colWidth"] = val + "px"
                 }
                 return c
-            }) 
+            })
             this.rows = this.rows.map( r => {
-                r.cells = r.cells?.map( c => {
-                    if(c && c.column === rawCol)
-                        c.width = (val + "px")
-                    return c
-                })
+                const inFold = this.elIsInFold(document.getElementById(r.id))
+                if(inFold){
+                    r.cells = r.cells?.map( c => {
+                        if(c && c.column === rawCol)
+                            c.width = (val + "px")
+                        return c
+                    })
+                }
                 return r
             })
             const allColW = this.getAllColWidth(colLen)

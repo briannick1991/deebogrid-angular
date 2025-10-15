@@ -1,5 +1,14 @@
-<div class="export-opts">
-    <div class="inline md-text v-mid">Export {{count | number}} {{rowsStr}}: &nbsp;&nbsp;&nbsp;</div>
-    <button *ngFor="let format of formats" type="button" (click)="handleExportData(format)" 
-    class="btn-export-or-print" [disabled]="exporting || !count">{{format}}</button>
+<div class="relly">
+    <div class="deebo-dd-select-hide deebo-dd-export" [class.deebo-dd-select]="optsOpen">
+        <div *ngFor="let format of formats" class="deebo-dd-opt deebo-dd-export">
+            <button type="button" class="no-btn btn-export" (click)="handleExportData(format)" 
+            [disabled]="exporting || !count">{{format}}</button>
+        </div>
+    </div>
+</div>
+<div class="deebo-dd-contain deebo-dd-export flex-center" (click)="toggleExportOpts()">
+    <button class="btn-deebo-dd deebo-dd-export no-btn">
+        <span>Export {{count | number}} {{rowsStr}}</span>
+        <i class="material-icons" aria-hidden="false">{{optsOpen ? "keyboard_arrow_up" : "keyboard_arrow_down"}}</i>
+    </button>
 </div>

@@ -17,6 +17,7 @@ export class ExportComponent {
 
   init = true
   rowsStr = "rows"
+  optsOpen = false
   exporting: boolean = false;
   @Input() count: number = 0
   @Input() columns: ColumnHeader[] = []
@@ -31,12 +32,22 @@ export class ExportComponent {
 
   ngOnInit() {
     this.init = false
+    this.dataTableService.closeExportOpts.subscribe( e => this.optsOpen = e)
+  }
+
+  toggleExportOpts() {
+    this.optsOpen = !this.optsOpen
+    if(this.optsOpen)
+        setTimeout( () => this.dataTableService.listenToCloseExportOpts = true )
   }
 
   //EXPORT
   handleExportData(format: string) { 
-      if(!this.dataTableService.mainData || !this.dataTableService.mainDataLen)
+      if(!this.dataTableService.mainData || !this.dataTableService.mainDataLen){
+          this.optsOpen = false;
+          this.dataTableService.listenToCloseExportOpts = false
           return alert("Please generate a table then export data!");
+      }
       this.exporting = true
       try{
           let data; let cType = "application/octet-stream";
@@ -45,7 +56,7 @@ export class ExportComponent {
           const rLen = rows.length
           const selLen = this.dataTableService.currSelRows.length
           if(selLen && (selLen !== rLen)){
-              setTimeout( () => this.exporting = false)
+              setTimeout( () => { this.endExportOpts() })
               const sStr = (selLen.toLocaleString(undefined, {maximumFractionDigits:0}) + (" row" + (selLen === 1 ? "" : "s")))
               const rStr = (rLen.toLocaleString(undefined, {maximumFractionDigits:0}) + (" row" + (rLen === 1 ? "" : "s")))
               const noun = (selLen === 1 ? "just that one" : "them only")
@@ -53,7 +64,7 @@ export class ExportComponent {
                   return
           }
           if(!rLen){
-              setTimeout( () => this.exporting = false)
+              setTimeout( () => { this.endExportOpts() })
               return alert("Please include some rows to export.")
           }
           let c = 0
@@ -86,7 +97,7 @@ export class ExportComponent {
               }
               const uLen = useCols.length
               if(!uLen){
-                  setTimeout( () => this.exporting = false)
+                  setTimeout( () => { this.endExportOpts() })
                   return alert("Please select or unhide some columns to export.")
               }
               if(uLen === clen){//nothing hidden just strinify
@@ -111,7 +122,9 @@ export class ExportComponent {
               if(data)
                   this.downloadFileExp(data, cType, fName, format)
           }
-      }catch(e){ setTimeout( () => this.exporting = false) }
+      }catch(e){ 
+        setTimeout( () => { this.endExportOpts() })
+      }
   }
 
   downloadFileExp(data: any, cType: string, fName: string, format: string) {
@@ -124,7 +137,13 @@ export class ExportComponent {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url)
-      setTimeout( () => { this.exporting = false })
+      setTimeout( () => { this.endExportOpts() })
+  }
+
+  endExportOpts() {
+    this.exporting = false;
+    this.optsOpen = false;
+    this.dataTableService.listenToCloseExportOpts = false
   }
 
   whipToDelimForm(rows: any[], cols: any[], delim: any) {

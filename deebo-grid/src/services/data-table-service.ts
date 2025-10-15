@@ -18,6 +18,7 @@ export class DataTableService {
             sortOrder: string[] = []
             mainData: any[] = []
             mainDataLen = 0
+            tblTop: number = 0;
             tblBot: number = 0;
             currFilData: any[] = []
             isSorting = false;
@@ -25,7 +26,11 @@ export class DataTableService {
             currEditIndex: any = 0
             currColumnEdit: any = null;
             currGroup: string = ""
+            listenToCloseExportOpts = false;
+            listenToCloseGroupByOpts = false;
             currGrouping: Subject<any> = new Subject()
+            closeExportOpts: Subject<boolean> = new Subject()
+            closeGroupByOpts: Subject<boolean> = new Subject()
             gridEventWhileGrouped: Subject<any> = new Subject()
             gridScrollEndWhileGrouped: Subject<any> = new Subject()
             currSelRows: any[] = []//just be an index of mainData
@@ -39,6 +44,7 @@ export class DataTableService {
                 date: ["Equals", "Not on", "Empty", "Not Empty", "Before", "After"],
             }
             badStrings: string[] = ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"]
+            apiUrl = "http://127.0.0.1:8080/api/big-data-test"//"https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json"
 
             /*numeric columns can have a predefined symbol up to 2 characters long, 
             add these based on columns (object properties) coming from your api*/
@@ -48,7 +54,7 @@ export class DataTableService {
             ]
 
             getSampleData(): Observable<any> {
-              return this.http.get("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json").pipe(
+              return this.http.get(this.apiUrl).pipe(
                 catchError(error => {
                     this.errorLoading = true
                     this.noDataMsg = error.message
@@ -73,6 +79,27 @@ export class DataTableService {
 
             setTblVertBounds() {
                 this.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0) + 250
+                this.tblTop = (document.getElementsByClassName("data-table-headers")[0]?.getBoundingClientRect().bottom || 0) - 200
+            }
+
+            elIsAboveFold(el: HTMLElement | null, top: number): boolean {
+                if(el){
+                    const elRect = el.getBoundingClientRect()
+                    if(el && elRect && elRect.bottom < top)
+                        return true
+                    return false
+                }
+                return false;
+            }
+
+            elIsBelowFold(el: HTMLElement | null, top: number): boolean {
+                if(el){
+                    const elRect = el.getBoundingClientRect()
+                    if(el && elRect && elRect.top > top)
+                        return true
+                    return false
+                }
+                return false;
             }
 
             buildDataFilSrtTracker(data: any) {

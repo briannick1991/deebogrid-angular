@@ -1,14 +1,5 @@
-.row-group-menu{
-    padding: 33px 11px 3px 1px;
-    max-width:100%;
-    clear: both;
-    overflow-x:auto;
-    white-space:nowrap
-}
-
-.row-group-menu label{
+.deebo-dd-opt label{
     cursor: pointer;
-    margin-right:31px;
     vertical-align:middle
 }
 

@@ -87,13 +87,18 @@
 *ngIf="paginatorReady"
 [totalRows]="dataTableService.currFilData.length"
 ></app-data-table-paginator><!--not an actual paginator-->
-<app-row-group-menu
-*ngIf="canGroupBy.length > 0"
-[groups]="canGroupBy"
-[enableClear]="currGroupValues.length ? true : false"
-></app-row-group-menu>
-<app-export-component
-[columns]="columnHeaders"
-*ngIf="dataTableService.currFilData.length > 0"
-[count]="dataTableService.currFilData.length">
-</app-export-component>
+<div class="pad-top-thirty right">
+    <div class="inline-b deebo-dd-contain-div">
+        <app-row-group-menu
+        *ngIf="canGroupBy.length > 0"
+        [groups]="canGroupBy"
+        [enableClear]="currGroupValues.length ? true : false"
+        ></app-row-group-menu>
+    </div><div class="inline-b deebo-dd-contain-div">
+        <app-export-component
+        [columns]="columnHeaders"
+        *ngIf="dataTableService.currFilData.length > 0"
+        [count]="dataTableService.currFilData.length">
+        </app-export-component>
+    </div>
+</div>

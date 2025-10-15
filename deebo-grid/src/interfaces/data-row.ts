@@ -6,4 +6,5 @@ export interface DataRow {
     width: string;
     height?: string;
     cells?: DataCell[];
+    aboveTable?: boolean;
 }
