@@ -1,5 +1,5 @@
 <div class="relly">
-    <div class="deebo-dd-select-hide deebo-dd-export" [class.deebo-dd-select]="optsOpen">
+    <div #ddSelect class="deebo-dd-select-hide deebo-dd-export" [class.deebo-dd-select]="optsOpen">
         <div *ngFor="let format of formats" class="deebo-dd-opt deebo-dd-export">
             <button type="button" class="no-btn btn-export" (click)="handleExportData(format)" 
             [disabled]="exporting || !count">{{format}}</button>

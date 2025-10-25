@@ -20,10 +20,16 @@ export class DataTableService {
             mainDataLen = 0
             tblTop: number = 0;
             tblBot: number = 0;
+            tblLeft: number = 0;
+            tblRight: number = 0;
+            dpLim: number = 5000;
             currFilData: any[] = []
             isSorting = false;
             isFiltering = false
+            themeColor1: any = null
+            themeColor2: any = null
             currEditIndex: any = 0
+            visibleCols: string[] = []
             currColumnEdit: any = null;
             currGroup: string = ""
             listenToCloseExportOpts = false;
@@ -33,9 +39,11 @@ export class DataTableService {
             closeGroupByOpts: Subject<boolean> = new Subject()
             gridEventWhileGrouped: Subject<any> = new Subject()
             gridScrollEndWhileGrouped: Subject<any> = new Subject()
+            setIdealColumnWidth: Subject<any> = new Subject()
             currSelRows: any[] = []//just be an index of mainData
             displayOnlySelRows = false
             noDataMsg: string = "Loading..."
+            deboTotal: string = "deebo_total"
             errorLoading = false;
             dataFilSrtTracker: any = {}
             comparatorOpts: any = {
@@ -44,7 +52,7 @@ export class DataTableService {
                 date: ["Equals", "Not on", "Empty", "Not Empty", "Before", "After"],
             }
             badStrings: string[] = ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"]
-            apiUrl = "http://127.0.0.1:8080/api/big-data-test"//"https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json"
+            apiUrl = "https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json"
 
             /*numeric columns can have a predefined symbol up to 2 characters long, 
             add these based on columns (object properties) coming from your api*/
@@ -80,6 +88,14 @@ export class DataTableService {
             setTblVertBounds() {
                 this.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0) + 250
                 this.tblTop = (document.getElementsByClassName("data-table-headers")[0]?.getBoundingClientRect().bottom || 0) - 200
+            }
+
+            setTblHorizBounds() {
+                const dtBds = document.getElementsByClassName("data-table")[0]?.getBoundingClientRect()
+                if(dtBds){
+                    this.tblLeft = (dtBds.left || 0) - 200
+                    this.tblRight = (dtBds.right || 0) + 250
+                }
             }
 
             elIsAboveFold(el: HTMLElement | null, top: number): boolean {
@@ -206,21 +222,41 @@ export class DataTableService {
                 return "text"
             }
 
-            findObjIndxInData(item: any) {
-                let i = 0; let eq = 0;
-                const propLen = Object.keys(item).length
-                const len = this.mainData?.length
-                for(i; i < len; i++){
-                    eq = 0
-                    const mD = this.mainData[i]
-                    for(const prop in item){
-                        if(item[prop] === mD[prop])
-                            eq += 1
-                        if(eq === propLen)//they all equal
-                            return i
-                    }
+            mapCompToSym(comp: string) {
+                switch(comp){//not all comps will get converted
+                    case "Equals":
+                    return "=";
+                    case "Not Equal":
+                    return "!=";
+                    case "Less Than":
+                    return "<";
+                    case "Less Than or Equal":
+                    return "<=";
+                    case "Greater Than":
+                    return ">";
+                    case "Greater Than or Equal":
+                    return ">=";
                 }
-                return -1
+                return comp;
+            }
+
+            findObjIndxInData(item: any) {
+                try{
+                    let i = 0; let eq = 0;
+                    const propLen = Object.keys(item).length
+                    const len = this.mainData?.length
+                    for(i; i < len; i++){
+                        eq = 0
+                        const mD = this.mainData[i]
+                        for(const prop in item){
+                            if(item[prop] === mD[prop])
+                                eq += 1
+                            if(eq === propLen)//they all equal
+                                return i
+                        }
+                    }
+                    return -1
+                } catch(e) { return -1 }
             }
 
             nLevelSort(data: any[], sortOrder: string[], obj: any) {

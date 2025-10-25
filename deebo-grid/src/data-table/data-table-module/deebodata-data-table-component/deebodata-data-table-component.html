@@ -4,8 +4,12 @@
     {{hcol}}</button>
 </div>
 <div class="controls" >
-    <input type="text" #topLevelDataFilter autocomplete="off" name="topLevelDataFilter" placeholder="Search" 
-    (input)="topFilterOnKeyUp()" (keyup)="topFilterOnKeyUp()" maxlength="255" [(ngModel)]="topLevelFilter" />
+    <input type="text" #topLevelDataFilter autocomplete="off" name="topLevelDataFilter" placeholder="Filter any column..." 
+    (input)="topFilterOnKeyUp()" (keyup)="topFilterOnKeyUp()" maxlength="255" [(ngModel)]="topLevelFilter" 
+    [disabled]="showCharts || !dataTableService.currFilData.length || handlingSelRows" />
+    <button type="button" class="no-btn btn-chart" (click)="openCharts()" [disabled]="showCharts || !dataTableService.currFilData.length || handlingSelRows">
+        <i class="material-icons v-mid" aria-hidden="false">pie_chart</i>&nbsp;<span class="v-mid">Insights</span>
+    </button>
     <button type="button" [disabled]="!dataTableService.currSelRows.length || handlingSelRows" (click)="clearSelectedRows()" class="btn-ctrl-sel-rows">Deselect Rows</button>
     <button #btnTogSelRows type="button" [disabled]="!dataTableService.currSelRows.length || handlingSelRows" (click)="toggleSelectedRows()" class="btn-ctrl-sel-rows">
         <i class="material-icons" aria-hidden="false">check_box_outline_blank</i>&nbsp;<span>{{togSelRows}}</span>
@@ -29,6 +33,13 @@
         </div>
     </div>
 </div>
+<app-charts-and-graphs 
+*ngIf="showCharts"
+[height]="chartHgt"
+[state]="chartState"
+[chartColumns]="columnsForCharts"
+(close)="showCharts = $event"
+></app-charts-and-graphs>
 <div #dataTable class="data-table">
     <div #dataTableHeaders class="data-table-headers">
         <app-data-table-header 
@@ -42,9 +53,9 @@
         (minimize)="minimizeColEls($event)"
         (filFocus)="handleFilFocus($event)"
         (filSelClick)="handleWinClickOnSelFil()"
-        (width)="handleSingleColResize($event)"
         (height)="setHeaderHeight($event, true)"
         (render)="renderCurrData($event.value, $event.field)"
+        (width)="handleSingleColResize($event.value, $event.column)"
         ></app-data-table-header>
     </div>
     <div #dataTableBody id="dataTableBody" style="overflow: auto;" [style.height]="dTblHeight + 'px'" (scroll)="handleScroll($event)"
@@ -67,6 +78,7 @@
         <app-row-group-panel
         *ngFor="let group of currGroupValues"
         [groupValue]="group.value"
+        [maxCols]="maxCols"
         [colWid]="useColWid"
         [useRowWid]="useRowWid"
         [editable]="editable"
@@ -87,7 +99,7 @@
 *ngIf="paginatorReady"
 [totalRows]="dataTableService.currFilData.length"
 ></app-data-table-paginator><!--not an actual paginator-->
-<div class="pad-top-thirty right">
+<div class="pad-top-teen right">
     <div class="inline-b deebo-dd-contain-div">
         <app-row-group-menu
         *ngIf="canGroupBy.length > 0"

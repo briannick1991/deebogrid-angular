@@ -1,7 +1,7 @@
 <div class="relly">
-    <div class="deebo-dd-select-hide deebo-dd-groupby" [class.deebo-dd-select]="optsOpen">
+    <div #ddSelect class="deebo-dd-select-hide deebo-dd-groupby" [class.deebo-dd-select]="optsOpen">
         <div *ngIf="enableClear" class="deebo-dd-opt deebo-dd-groupby">
-            <button (click)="setGrouping(null)" class="v-mid no-btn">
+            <button (click)="setGrouping(null)" class="v-mid no-btn" style="width: 100%;">
                 <i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
             </button>
         </div>

@@ -1,0 +1,21 @@
+<div #lgContain [id]="'lineGraph' + common.elifyCol(column)" class="line-graph-container">
+    <ng-container *ngIf="warnmsg">
+        <div class="flex-center" style="height: 100px">
+            <div>
+                <i class="material-icons error-message" aria-hidden="false" style="vertical-align:middle">warning</i>&nbsp;
+                {{warnmsg}}
+            </div>
+        </div>
+    </ng-container>
+    <div class="lg-n-marker-cont">
+        <div *ngFor="let n of naddedtks" class="lg-n-marker" [class.visible-marker]="n.visible">{{n.value}}</div>
+        <div *ngFor="let n of nmrks" class="lg-n-marker-h">{{n.value}}</div>
+    </div>
+    <div #lineGraph [class]="lgClass">
+        <div *ngFor="let n of dtmrks" class="lg-dt-marker" [class.visible-marker]="n.visible" [style.left]="n.left">{{n.value}}</div>
+        <div *ngFor="let n of dtmrksH" class="lg-dt-marker-h" [class.visible-marker]="n.visible" [style.left]="n.left">{{n.value}}</div>
+        <div *ngIf="lblTxt" class="lg-lbl-x">{{lblTxt}}</div>
+        <div *ngFor="let p of plots" class="lg-plot" [attr.data-number]="p.number" (mouseenter)="showDotPlotInfo(p.date, p.number)" 
+        (mouseleave)="hideDotPlotInfo()" [ngStyle]="{'bottom': p.bottom, 'left': p.left, 'background': p.background }">{{p.value}}</div>
+    </div>
+</div>

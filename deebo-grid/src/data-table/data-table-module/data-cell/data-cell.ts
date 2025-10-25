@@ -36,8 +36,10 @@ export class DataCellComponent {
   symbolCls: string = "";//also for numbers only, always add a space in front
 
   ngOnChanges() {
-    if(!this.init)
-      this.applyDimensions()
+    if(!this.init){
+      // if(this.cell.visible || this.dataTableService.visibleCols.indexOf(this.cell.column) > -1)
+        this.applyDimensions()
+    }
   }
 
   ngOnInit() {

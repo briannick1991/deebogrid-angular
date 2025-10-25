@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, Input, ViewChild, ElementRef } from '@angular/core';
 import { CommonService } from '../../../services/common-service';
 import { DataTableService } from '../../../services/data-table-service';
 
@@ -14,6 +14,7 @@ export class RowGroupMenu {
   optsOpen = false
   @Input() groups: string[] = []
   @Input() enableClear: boolean = false
+  @ViewChild("ddSelect", { static: true }) ddSelect!: ElementRef<HTMLDivElement>;
 
   constructor(public common: CommonService,
               private dataTableService: DataTableService,
@@ -25,8 +26,13 @@ export class RowGroupMenu {
 
   toggleGroupByOpts() {
     this.optsOpen = !this.optsOpen
-    if(this.optsOpen)
-        setTimeout( () => this.dataTableService.listenToCloseGroupByOpts = true )
+    if(this.optsOpen){
+      setTimeout( () => {
+        const hgt = this.ddSelect.nativeElement.getBoundingClientRect().height
+        this.dataTableService.listenToCloseGroupByOpts = true;
+        this.ddSelect.nativeElement.style.top = -(hgt+3) + "px"
+      })
+    }
   }
 
   setGrouping(group: string | null) {

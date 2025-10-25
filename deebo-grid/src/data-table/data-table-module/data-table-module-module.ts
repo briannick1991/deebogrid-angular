@@ -11,6 +11,7 @@ import { DeebodataDataTableComponent } from './deebodata-data-table-component/de
 import { ExportComponent } from './export-component/export-component';
 import { RowGroupMenu } from './row-group-menu/row-group-menu';
 import { RowGroupPanel } from './row-group-panel/row-group-panel';
+import { ChartsModule } from '../charts/charts-module';
 
 
 
@@ -18,6 +19,7 @@ import { RowGroupPanel } from './row-group-panel/row-group-panel';
   declarations: [ ],
   imports: [
     CommonModule,
+    ChartsModule,
     DeebodataDataTableComponent,
     DataTableHeader,
     DataCellComponent,

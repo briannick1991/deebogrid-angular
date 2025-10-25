@@ -1,0 +1,46 @@
+<div class="relly chart-rel-contain">
+    <div #chartContain class="chart-contain" (scroll)="keepTitleNClose($event)" [class.chart-contain-show]="chartsReady" [style.height]="height">
+        <div class="relly" style="z-index: 10;">
+            <button type="button" #xChartsBtn class="abs-right no-btn" (click)="closeCharts()" style="background: white;">
+                <i class="material-icons error-message heavy" aria-hidden="false">close</i>
+            </button>
+        </div>
+        <div class="insights">
+            <h2 class="no-weight center" [innerHTML]="h2Text"></h2>
+            <div *ngFor="let row of iRows;" class="insight-field-row">
+                <div *ngFor="let col of row; let i = index" [id]="'insField' + common.elifyCol(col.column)" class="insight-field">
+                    <div style="width: 85%;">
+                        <h3 class="no-weight">{{common.titleCase(col.column)}}</h3>
+                        <ng-container *ngIf="dtCols.indexOf(col.column) > -1 else nonDateCharts">
+                            <div class="lg-title-cont">
+                                <ng-container *ngIf="(numCols.length > 1 || useData.length > dataTableService.dpLim) else dpTitle">
+                                    <button *ngFor="let opt of numCols" class="btn-line-graph-opts"
+                                    (click)="setLineGraphNumCol(opt)">
+                                        {{col.column + " by " + opt}}
+                                    </button>
+                                </ng-container>
+                                <ng-template #dpTitle>
+                                    <span class="sp-line-graph-title">{{common.titleCase(col.column) + " by " + common.titleCase(currNumColNm)}}</span>
+                                </ng-template>
+                            </div>
+                            <app-dot-plot-component
+                            *ngIf="currNumColData.length"
+                            [allData]="useData"
+                            [column]="col.column"
+                            [dateData]="col.data"
+                            [numCol]="currNumColNm"
+                            [numData]="currNumColData">
+                            </app-dot-plot-component>
+                        </ng-container>
+                        <ng-template #nonDateCharts>
+                            <app-column-chart
+                            [column]="col.column"
+                            [colData]="col.data"
+                            ></app-column-chart>
+                        </ng-template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

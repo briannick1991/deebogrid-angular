@@ -7,7 +7,6 @@
 }
 
 .deebo-dd-contain{
-    width:200px;
     height:36px;
     border:none;
     padding: 0 7px;
@@ -18,9 +17,9 @@
     vertical-align: middle;
     box-sizing: border-box;
     border-bottom: none !important;
-    box-shadow:0 0 2px 2px var(--grid-color);
-    -moz-box-shadow:0 0 2px 2px var(--grid-color);
-    -webkit-box-shadow:0 0 2px 2px var(--grid-color);
+    box-shadow:0 0 1px 1px var(--grid-color);
+    -moz-box-shadow:0 0 1px 1px var(--grid-color);
+    -webkit-box-shadow:0 0 1px 1px var(--grid-color);
     font-family:'Roboto Condensed', Arial, Helvetica, sans-serif
 }
 
@@ -52,16 +51,13 @@
     font-size: var(--reg-font-size);
 }
 
-.deebo-dd-opt button:hover{
-    text-decoration: underline;
-}
-
 .btn-deebo-dd i{
     margin-left: 5px;
 }
 
 .deebo-dd-select{
-    top: -124px;
+    right: 0;/*keeps export dd from flowing off page horiz*/
+    top: -150px;
     z-index: 10;
     border-radius: 3px;
     position: absolute;
@@ -71,23 +67,16 @@
     min-height: 120px;
     white-space: normal;
     min-width: 200px !important;
-    max-width: 200px !important;
-    max-height: 100px !important;
-    box-shadow:0 0 3px 2px var(--grid-color);
-    -moz-box-shadow:0 0 3px 2px var(--grid-color);
-    -webkit-box-shadow:0 0 3px 2px var(--grid-color);
+    max-width: 275px !important;
+    max-height: 300px !important;
+    box-shadow:0 0 2px 2px var(--grid-color);
+    -moz-box-shadow:0 0 2px 2px var(--grid-color);
+    -webkit-box-shadow:0 0 2px 2px var(--grid-color);
     transition: opacity 0.2s ease;
 }
 
-@media screen and (min-width: 960px) {
-    .deebo-dd-contain{
-        width: 250px;
-    }
-
-    .deebo-dd-select{
-        min-width: 250px !important;
-        max-width: 250px !important;
-    }
+.deebo-dd-opt:hover{
+    background: #ebebeb;
 }
 
 .deebo-dd-opt:last-of-type{

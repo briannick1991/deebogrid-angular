@@ -6,6 +6,11 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableDragService } from '../../../services/table-drag-service';
 
+export interface columnWidthResize{
+    column: string
+    value: number
+}
+
 @Component({
   selector: 'app-data-table-header',
   imports: [CommonModule, FormsModule, DecimalPipe, ],
@@ -33,7 +38,7 @@ export class DataTableHeader {
   @Input() columnHeader!: ColumnHeader;
   @Output("sort") sort: EventEmitter<string> = new EventEmitter()
   @Output("render") render: EventEmitter<any> = new EventEmitter()
-  @Output("width") width: EventEmitter<number> = new EventEmitter()
+  @Output("width") width: EventEmitter<columnWidthResize> = new EventEmitter()
   @Output("height") height: EventEmitter<number> = new EventEmitter()
   @Output("reset") reset: EventEmitter<boolean> = new EventEmitter()
   @Output("freeze") freeze: EventEmitter<string> = new EventEmitter()
@@ -56,6 +61,7 @@ export class DataTableHeader {
       this.compOpts = [...this.dataTableService.comparatorOpts[this.columnHeader.dataType]]
     }
     this.tblDragService.headDims.subscribe( d => { this.updateUiColCellTheme(d.prop, d.value) })
+    this.dataTableService.setIdealColumnWidth.subscribe( c => { this.handleColResDblClick(this.columnHeader.column) })
   }
   
   ngAfterViewInit() {
@@ -170,14 +176,14 @@ export class DataTableHeader {
       }
   }
 
-  updateUiColCellTheme(cssProp: string, val: number) {
+  updateUiColCellTheme(cssProp: string, val: number, col?: string) {
     if(cssProp === "height")
         this.height.emit(val)
-      const prop = this.common.replaceUniSep(this.dataTableService.currColumnEdit)
+      const prop = col || this.common.replaceUniSep(this.dataTableService.currColumnEdit)
       if(prop && this.dataTableService.dataFilSrtTracker[prop]){
           if(cssProp === "width"){
               this.dataTableService.dataFilSrtTracker[prop].colWidth = (val || parseInt(this.colWid)).toString()
-              this.width.emit(val || parseInt(this.colWid))
+              this.width.emit({column: prop, value: val || parseInt(this.colWid)})
           }    
       }
   }
@@ -189,11 +195,13 @@ export class DataTableHeader {
             let useWid = 50
             const els = document.getElementsByClassName("data-cell-" + this.common.elifyCol(prop))
             const len = els.length
-            for(i; i < len; i++)
-                wids.push(els[i].scrollWidth)
-            useWid =wids.sort()[(len-1)]
-            const cswid = (Math.max(useWid+1))
-            this.updateUiColCellTheme("width", cswid)
+            if(len){
+                for(i; i < len; i++)
+                    wids.push(els[i].scrollWidth)
+                useWid =wids.sort()[(len-1)]
+                const cswid = (Math.max(useWid+1))
+                this.updateUiColCellTheme("width", cswid, prop)
+            }
         }
     }
 

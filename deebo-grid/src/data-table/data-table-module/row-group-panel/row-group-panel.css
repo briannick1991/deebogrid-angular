@@ -1,5 +1,6 @@
 .row-group-panel{
     padding: 17px 11px;
+    border-bottom: 1px dotted var(--accent-color);
 }
 
 .open-panel{

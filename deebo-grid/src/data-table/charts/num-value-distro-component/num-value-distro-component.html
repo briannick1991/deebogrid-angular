@@ -1,0 +1,20 @@
+<div #numColDistContainer class="num-col-val-dist-cont">
+    <div *ngFor="let nm of nmrksVdn" class="vd-n-marker" [attr.data-value]="nm.value" [style.left]="nm.left">
+        {{nm.value}}
+    </div>
+    <div *ngFor="let nm of nmrksVdnH" class="vd-n-marker-h" [attr.data-value]="nm.value" [attr.data-perc]="nm.percent" [style.left]="nm.left">
+        {{nm.value}}
+    </div>
+    <div *ngIf="avgNmrk" class="vd-n-marker-h" [attr.data-value]="avgNmrk.value" [attr.data-perc]="avgNmrk.percent">
+        {{avgNmrk.value}}
+    </div>
+    <div *ngFor="let nb of nColValBars" class="num-col-val-dist-bar" [attr.data-number]="nb.number"
+    (mouseenter)="matchVdBarToStat('insField' + common.elifyCol(column), nb.stat)" (mouseleave)="killAllVdHighlights()"
+    [ngStyle]="{ 'left': nb.left, 'background': (nb.background || 'rgb(50, 50, 50)') }"></div>
+    <div *ngIf="avgColValBar" class="num-col-avg-dist-bar" [style.left]="avgColValBar.left" [attr.data-number]="avgColValBar.number"
+    (mouseenter)="matchVdBarToStat('insField' + common.elifyCol(column), avgColValBar.number)" (mouseleave)="killAllVdHighlights()">
+    </div>
+</div>
+<div *ngIf="dataTableService.dataFilSrtTracker[column]['colCellSymbol']" class="center heavy pad-top-ten">
+    {{"("+dataTableService.dataFilSrtTracker[column]['colCellSymbol']+")"}}
+</div>

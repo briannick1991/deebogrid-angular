@@ -8,5 +8,6 @@ export interface DataCell {
     dataType: string;
     minimized: boolean;
     editable: boolean;
+    visible: boolean;
     top?: number;
 }

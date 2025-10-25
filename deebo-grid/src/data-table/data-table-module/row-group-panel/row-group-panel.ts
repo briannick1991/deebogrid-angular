@@ -32,6 +32,7 @@ export class RowGroupPanel {
   @Input() groupValue: string = ""
   @Input() colWid: string = ""
   @Input() useRowWid: string = ""
+  @Input() maxCols: number = 0
   @Input() rowBuffer: number = 0
   @Input() editable: boolean = false
   @Input() columns: string[] = []
@@ -87,9 +88,10 @@ export class RowGroupPanel {
               row.cells?.push({
                 column: prop,
                 rawText: text,
+                visible: true,
                 freeze: useProp.freeze,
                 minimized: useProp.minimize,
-                editable: this.editable,
+                editable: useTxt.prop !== "textContent" ? false : this.editable,
                 width: useProp.colWidth || this.colWid,
                 dataType: this.dataTableService.figureFilterType(prop),
                 text: (useTxt.prop === "textContent" ? useTxt.value : ""),
@@ -99,13 +101,14 @@ export class RowGroupPanel {
       }
       const limit = Math.min(init, this.count)
       const colLen = this.columns.length
+      const horizLim = Math.min(this.maxCols, colLen)
       for(n; n < limit; n++){
         const item = this.panelData[n]
         const index = this.dataTableService.findObjIndxInData(item)
         if(index > -1){
           this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [] })
           let k = 0
-          for(k; k < colLen; k++){
+          for(k; k < horizLim; k++){
             const col = this.columns[k]
             addCell(item[col], col, this.rows[n])
           }
@@ -165,13 +168,36 @@ export class RowGroupPanel {
       return this.lastElRowIndex;
   }
 
+  setColsOnVisScreen() {
+      let i = 0
+      let vCols = []
+      const useCols = this.columns
+      const len = useCols.length
+      for(i; i < len; i++){
+          const col = useCols[i]
+          const el = document.getElementById("columnHeader" + this.common.elifyCol(col))
+          if(el){
+              const elbds = el.getBoundingClientRect()
+              if(elbds.left >= this.dataTableService.tblLeft && elbds.right < this.dataTableService.tblRight)
+                  vCols.push(col)
+          }
+      }
+      this.dataTableService.visibleCols = [...vCols]
+    }
+
   handleScroll(event: any) {
     const top = event.target.scrollTop
     const left = event.target.scrollLeft
     /*horiz scroll*/
     if(left !== this.horizRest){
+      if(left > this.horizRest){
+          this.execHorizScrollRight(this.dataTableService.visibleCols)
+      } else {//scrolling back left
+          this.execHorizScrollLeft(this.dataTableService.visibleCols)
+      }
       this.horizRest = left
       this.horizPos.emit(left)
+      this.setColsOnVisScreen()
     }
     /*horiz scroll*/
     /*vert scroll*/
@@ -198,7 +224,8 @@ export class RowGroupPanel {
       return {
           column: prop,
           rawText: text,
-          editable: this.editable,
+          visible: true,
+          editable: useTxt.prop !== "textContent" ? false : this.editable,
           dataType: this.dataTableService.figureFilterType(prop),
           freeze: useProp.freeze,
           minimized: useProp.minimize,
@@ -207,6 +234,102 @@ export class RowGroupPanel {
           html: useTxt.prop !== "textContent" ? useTxt.value : "",
       }
   }
+
+  execHorizScrollRight(cols: string[]) {
+        let i = 0; let c = 0; let e = 0;
+        const rows = this.rows.filter( r => r.cells?.length)
+        const len = rows.length
+        const clen = cols.length
+        let colsToAdd: string[] = []
+        let colsToRem: string[] = []
+        const cellsExst: string[] | undefined = rows[0]?.cells?.map( c => c.column)
+        if(cellsExst){
+            const eLen = cellsExst.length
+            for(c; c < clen; c++){//add
+                const col = cols[c]
+                if(cellsExst.indexOf(col) < 0)
+                    colsToAdd.push(col)
+            }
+            for(e; e < eLen; e++){//remove
+                const col = cellsExst[e]
+                if(cols.indexOf(col) < 0)
+                    colsToRem.push(col)
+            }
+        }
+        const colLen = colsToAdd.length
+        const colRLen = colsToRem.length
+        if(colLen || colRLen){
+            for(i; i < len; i++){
+                let k = 0; let r = 0
+                const row = rows[i]
+                const item = this.dataTableService.mainData[row.index]
+                for(k; k < colLen; k++){//add
+                    const col = colsToAdd[k]
+                    const eCell: DataCell | undefined = row.cells?.find( c => c.column === col)
+                    if(eCell){//already there, make visible
+                        eCell.visible = true
+                    } else {
+                        const cell = this.addCell(item[col], col)
+                        if(typeof cell !== "string")
+                            row.cells?.push(cell)
+                    }
+                }
+                for(r; r < colRLen; r++){//remove
+                    const col = colsToRem[r]
+                    if(row.cells){
+                        const rCell: DataCell | undefined = row.cells.find( c => c.column === col)
+                        if(rCell)
+                            rCell.visible = false
+                    }
+                }
+            }
+        }
+    }
+
+    execHorizScrollLeft(cols: string[]) {
+        let i = 0; let c = 0; let e = 0;
+        const rows = this.rows.filter( r => r.cells?.length)
+        const len = rows.length
+        const clen = cols.length
+        let colsToAdd: string[] = []
+        let colsToRem: string[] = []
+        const cellsExst: string[] | undefined = rows[0]?.cells?.filter( c => c.visible).map( c => c.column)
+        if(cellsExst){
+            const eLen = cellsExst.length
+            for(c; c < clen; c++){//add
+                const col = cols[c]
+                if(cellsExst.indexOf(col) < 0)
+                    colsToAdd.push(col)
+            }
+            for(e; e < eLen; e++){//remove
+                const col = cellsExst[e]
+                if(cols.indexOf(col) < 0)
+                    colsToRem.push(col)
+            }
+        }
+        const colLen = colsToAdd.length
+        const colRLen = colsToRem.length
+        if(colLen || colRLen){
+            for(i; i < len; i++){
+                let k = 0; let r = 0
+                const row = rows[i]
+                for(k; k < colLen; k++){//add visible
+                    const col = colsToAdd[k]
+                    const cell: DataCell | undefined = row.cells?.find( c => c.column === col)
+                    if(cell)
+                        cell.visible = true
+                }
+                for(r; r < colRLen; r++){//remove
+                    const col = colsToRem[r]
+                    if(row.cells){
+                        const rCell: DataCell | undefined = row.cells.find( c => c.column === col)
+                        if(rCell)
+                            rCell.visible = false
+                    }
+                }
+            }
+        }
+    }
 
   execVertScrollDown(cols: string[], colLen: number) {
       let changed = 0

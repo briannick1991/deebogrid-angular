@@ -1,4 +1,4 @@
-import { Component, Input, SimpleChanges, } from '@angular/core';
+import { Component, ElementRef, Input, SimpleChanges, ViewChild, } from '@angular/core';
 import { DataTableService } from '../../../services/data-table-service';
 import { ColumnHeader } from '../../../interfaces/column-header';
 import { CommonModule, DecimalPipe } from '@angular/common';
@@ -22,6 +22,7 @@ export class ExportComponent {
   @Input() count: number = 0
   @Input() columns: ColumnHeader[] = []
   formats: string[] =  ["csv" ,"json" ,"psv" ,"tsv"]
+  @ViewChild("ddSelect", { static: true }) ddSelect!: ElementRef<HTMLDivElement>;
 
   ngOnChanges(changes: SimpleChanges) {
     if(!this.init && changes){
@@ -37,8 +38,13 @@ export class ExportComponent {
 
   toggleExportOpts() {
     this.optsOpen = !this.optsOpen
-    if(this.optsOpen)
-        setTimeout( () => this.dataTableService.listenToCloseExportOpts = true )
+    if(this.optsOpen){
+        setTimeout( () => {
+            const hgt = this.ddSelect.nativeElement.getBoundingClientRect().height
+            this.dataTableService.listenToCloseExportOpts = true;
+            this.ddSelect.nativeElement.style.top = -(hgt+3) + "px"
+        })
+    }
   }
 
   //EXPORT
