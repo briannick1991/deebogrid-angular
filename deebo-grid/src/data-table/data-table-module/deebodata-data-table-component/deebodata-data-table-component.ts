@@ -621,6 +621,11 @@ export class DeebodataDataTableComponent {
                 if(prop && row){
                     const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
                     const useTxt = this.dataTableService.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
+                    const figEditable = (val: string): boolean => {
+                        if(/<img/g.test(val))
+                            return false;
+                        return this.editable
+                    }
                     row.cells?.push({
                       column: prop,
                       freeze: false,
@@ -628,7 +633,7 @@ export class DeebodataDataTableComponent {
                       rawText: text,
                       visible: true,
                       width: this.useColWid,
-                      editable: useTxt.prop !== "textContent" ? false : this.editable,
+                      editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
                       dataType: this.dataTableService.figureFilterType(prop),
                       text: (useTxt.prop === "textContent" ? useTxt.value : ""),
                       html: (useTxt.prop !== "textContent" ? useTxt.value : ""),
@@ -1328,11 +1333,16 @@ export class DeebodataDataTableComponent {
             if(prop && row){
                 const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
                 const useTxt = this.dataTableService.figureCellText(text, notNum, this.dataTableService.dataFilSrtTracker[prop]["colCellSymbol"])
+                const figEditable = (val: string): boolean => {
+                    if(/<img/g.test(val))
+                        return false;
+                    return this.editable
+                }
                 row.cells?.push({
                     column: prop,
                     rawText: text,
                     visible: true,
-                    editable: useTxt.prop !== "textContent" ? false : this.editable,
+                    editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
                     dataType: this.dataTableService.figureFilterType(prop),
                     freeze: this.dataTableService.dataFilSrtTracker[prop].freeze,
                     minimized: this.dataTableService.dataFilSrtTracker[prop].minimize,

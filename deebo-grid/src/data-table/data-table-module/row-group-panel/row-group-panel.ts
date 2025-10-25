@@ -85,13 +85,18 @@ export class RowGroupPanel {
               const useProp = this.dataTableService.dataFilSrtTracker[prop]
               const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
               const useTxt = this.dataTableService.figureCellText(text, notNum, useProp["colCellSymbol"])
+              const figEditable = (val: string): boolean => {
+                  if(/<img/g.test(val))
+                      return false;
+                  return this.editable
+              }
               row.cells?.push({
                 column: prop,
                 rawText: text,
                 visible: true,
                 freeze: useProp.freeze,
                 minimized: useProp.minimize,
-                editable: useTxt.prop !== "textContent" ? false : this.editable,
+                editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
                 width: useProp.colWidth || this.colWid,
                 dataType: this.dataTableService.figureFilterType(prop),
                 text: (useTxt.prop === "textContent" ? useTxt.value : ""),
@@ -221,11 +226,16 @@ export class RowGroupPanel {
       const useProp = this.dataTableService.dataFilSrtTracker[prop]
       const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
       const useTxt = this.dataTableService.figureCellText(text, notNum, useProp["colCellSymbol"])
+      const figEditable = (val: string): boolean => {
+          if(/<img/g.test(val))
+              return false;
+          return this.editable
+      }
       return {
           column: prop,
           rawText: text,
           visible: true,
-          editable: useTxt.prop !== "textContent" ? false : this.editable,
+          editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
           dataType: this.dataTableService.figureFilterType(prop),
           freeze: useProp.freeze,
           minimized: useProp.minimize,
