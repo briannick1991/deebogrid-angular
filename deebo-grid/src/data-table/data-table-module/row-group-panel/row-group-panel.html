@@ -4,7 +4,8 @@
         <i class="material-icons v-mid" aria-hidden="false">{{open ? "keyboard_arrow_down" : "chevron_right"}}</i>
     </button>
 </div>
-<div *ngIf="open" #panelDataGrid style="overflow: auto;margin-top: 3px" [style.height]="panelHeight" (scroll)="handleScroll($event)" (scrollend)="setDataRowHgtsById()">
+<div *ngIf="open" #panelDataGrid style="overflow: auto;margin-top: 3px" class="group-panel-grid"
+[style.height]="panelHeight" (scroll)="handleScroll($event)" (scrollend)="setDataRowHgtsById()">
     <div *ngFor="let row of rows" [id]="row.id" class="data-table-row not-rendered rows-for-{{elifyGrouping}}" [attr.data-index]="row.index"
     [class.rendered]="row.cells?.length ? true : false"
         [ngStyle]="{'width': row.width, 'height': row.height}" >

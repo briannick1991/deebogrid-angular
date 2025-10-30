@@ -27,8 +27,9 @@ export class RowGroupPanel {
   tblBot: number = 0
   changedIds: string[] = []
   lastElRowIndex: number = 0;
-  panelHeight: string = "400px"
+  panelHeight: string = "500px"
   @Input() horizRest = 0
+  @Input() colOfInt: string = ""
   @Input() groupValue: string = ""
   @Input() colWid: string = ""
   @Input() useRowWid: string = ""
@@ -72,72 +73,104 @@ export class RowGroupPanel {
 
   openGroup() {
     this.open = !this.open
-    if(!this.open){
-      this.rows = []
-      this.panelData = []
-    } else {
-      this.panelData = this.dataTableService.currFilData.filter( d => d[this.dataTableService.currGroup] === this.groupValue)
-      this.count = this.panelData.length
-      let n = 0
-      let init = 20;
-      const addCell = (text: any, prop: string | null, row: DataRow | null) => {
-          if(prop && row){
-              const useProp = this.dataTableService.dataFilSrtTracker[prop]
-              const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
-              const useTxt = this.dataTableService.figureCellText(text, notNum, useProp["colCellSymbol"])
-              const figEditable = (val: string): boolean => {
-                  if(/<img/g.test(val))
-                      return false;
-                  return this.editable
+    setTimeout( () => {
+        if(!this.open){
+          this.rows = []
+          this.panelData = []
+        } else {
+          this.panelData = this.dataTableService.currFilData.filter( d => d[this.dataTableService.currGroup] === this.groupValue)
+          this.count = this.panelData.length
+          let n = 0
+          let init = 20;
+          let didXScrl = false
+          const addCell = (text: any, prop: string | null, row: DataRow | null) => {
+              if(prop && row){
+                  const useProp = this.dataTableService.dataFilSrtTracker[prop]
+                  const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
+                  const useTxt = this.dataTableService.figureCellText(text, notNum, useProp["colCellSymbol"])
+                  const figEditable = (val: string): boolean => {
+                      if(/<img/g.test(val))
+                          return false;
+                      return this.editable
+                  }
+                  row.cells?.push({
+                    column: prop,
+                    rawText: text,
+                    visible: true,
+                    freeze: useProp.freeze,
+                    minimized: useProp.minimize,
+                    editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
+                    width: useProp.colWidth || this.colWid,
+                    dataType: this.dataTableService.figureFilterType(prop),
+                    text: (useTxt.prop === "textContent" ? useTxt.value : ""),
+                    html: (useTxt.prop !== "textContent" ? useTxt.value : ""),
+                  })
               }
-              row.cells?.push({
-                column: prop,
-                rawText: text,
-                visible: true,
-                freeze: useProp.freeze,
-                minimized: useProp.minimize,
-                editable: useTxt.prop === "textContent" ? this.editable : figEditable(useTxt.value),
-                width: useProp.colWidth || this.colWid,
-                dataType: this.dataTableService.figureFilterType(prop),
-                text: (useTxt.prop === "textContent" ? useTxt.value : ""),
-                html: (useTxt.prop !== "textContent" ? useTxt.value : ""),
+              
+              if(this.colOfInt && this.horizRest > 0 && this.colOfInt === prop && !didXScrl){
+                setTimeout( () => {
+                    const tbody = this.panelDataGrid?.nativeElement
+                    if(tbody)
+                        tbody.scrollLeft = this.horizRest
+                }, 100)
+                didXScrl = true
+              }
+          }
+          const limit = Math.min(init, this.count)
+          const colLen = this.columns.length
+          let horizLim = Math.min(this.maxCols, colLen)
+          if(this.colOfInt){
+              let indOfScrl: number = this.columns.indexOf(this.colOfInt) + 1
+              const vlen: number =this.dataTableService.visibleCols.length
+              const indInVis: number = this.dataTableService.visibleCols.indexOf(this.colOfInt)
+              const diff = vlen - indInVis
+              if(diff > 0)
+                indOfScrl += diff
+              horizLim = indOfScrl
+          } else {
+            if(this.horizRest > 0){
+                const vCollen = this.dataTableService.visibleCols.length
+                const lvis = this.dataTableService.visibleCols[(vCollen - 1)]
+                horizLim = this.columns.indexOf(lvis) + 1
+            }
+          }
+          for(n; n < limit; n++){
+            const item = this.panelData[n]
+            const index = this.dataTableService.findObjIndxInData(item)
+            if(index > -1){
+              this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [] })
+              let k = 0
+              for(k; k < horizLim; k++){
+                const col = this.columns?.[k]
+                if(col)
+                    addCell(item[col], col, this.rows[n])
+              }
+            }
+          }
+          this.setLastRowIndex()
+          setTimeout( () => { 
+              this.setDataRowHgts() 
+              if(this.count > init){
+                  let z = this.lastElRowIndex + 1
+                  const phund = (z+this.rowBuffer)
+                  const goTo = Math.min(this.count, phund)
+                  for(z; z < goTo; z++){
+                    const index = this.dataTableService.findObjIndxInData(this.panelData[z])
+                    if(index > -1)
+                      this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [], height: "78px" })
+                  }
+                  this.setLastRowIndex()
+              }
+              this.setHorizScrPos()
+              this.openEvt.emit("row-group-panel-" + this.elifyGrouping)
+              setTimeout( () => { 
+                this.setTblBot(); 
+                if(this.panelDataGrid)
+                    this.panelDataGrid.nativeElement.scrollBy(1, 0) 
               })
+            }, 250)
           }
-      }
-      const limit = Math.min(init, this.count)
-      const colLen = this.columns.length
-      const horizLim = Math.min(this.maxCols, colLen)
-      for(n; n < limit; n++){
-        const item = this.panelData[n]
-        const index = this.dataTableService.findObjIndxInData(item)
-        if(index > -1){
-          this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [] })
-          let k = 0
-          for(k; k < horizLim; k++){
-            const col = this.columns[k]
-            addCell(item[col], col, this.rows[n])
-          }
-        }
-      }
-      this.setLastRowIndex()
-      setTimeout( () => { 
-          this.setDataRowHgts() 
-          if(this.count > init){
-              let z = this.lastElRowIndex + 1
-              const phund = (z+this.rowBuffer)
-              const goTo = Math.min(this.count, phund)
-              for(z; z < goTo; z++){
-                const index = this.dataTableService.findObjIndxInData(this.panelData[z])
-                if(index > -1)
-                  this.rows.push({ id: "dataTableRow" + index, index: index, width: this.useRowWid, cells: [], height: "78px" })
-              }
-              this.setLastRowIndex()
-          }
-          this.setHorizScrPos()
-          this.openEvt.emit("row-group-panel-" + this.elifyGrouping)
-          setTimeout( () => { this.setTblBot() })
-        }, 250)
-      }
+        })
     }
 
   setTblBot() {
@@ -160,10 +193,15 @@ export class RowGroupPanel {
       const rLen = rows.length
       if(rLen){
           for(i; i < rLen; i++){
-              const row = rows[i]
-              const strtrowH = row.getBoundingClientRect().height;
-              let rHgt = parseInt(strtrowH?.toString() || "80px")
-              this.rows[i].height = rHgt + "px"
+              const erow = rows[i]
+              if(erow){
+                  const row = this.rows[i]
+                  if(row){
+                      const strtrowH = erow.getBoundingClientRect().height;
+                      let rHgt = parseInt(strtrowH?.toString() || "80px")
+                      this.rows[i].height = rHgt + "px"
+                  }
+              }
           } 
       }
   }
@@ -176,10 +214,9 @@ export class RowGroupPanel {
   setColsOnVisScreen() {
       let i = 0
       let vCols = []
-      const useCols = this.columns
-      const len = useCols.length
+      const len = this.columns.length
       for(i; i < len; i++){
-          const col = useCols[i]
+          const col = this.columns[i]
           const el = document.getElementById("columnHeader" + this.common.elifyCol(col))
           if(el){
               const elbds = el.getBoundingClientRect()
@@ -200,7 +237,6 @@ export class RowGroupPanel {
       } else {//scrolling back left
           this.execHorizScrollLeft(this.dataTableService.visibleCols)
       }
-      this.horizRest = left
       this.horizPos.emit(left)
       this.setColsOnVisScreen()
     }

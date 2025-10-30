@@ -6,7 +6,7 @@
     </div><div class="half-wid" [id]="'min' + common.elifyCol(column)">
         <span class="v-mid">Min: </span><span class="lg-text v-mid{{symCls}}" [attr.data-symbol]="symAttr">{{min}}</span>
     </div><div class="half-wid" [id]="'max' + common.elifyCol(column)">
-        <span class="v-mid">Min: </span><span class="lg-text v-mid{{symCls}}" [attr.data-symbol]="symAttr">{{max}}</span>
+        <span class="v-mid">Max: </span><span class="lg-text v-mid{{symCls}}" [attr.data-symbol]="symAttr">{{max}}</span>
     </div><div *ngIf="modeHtml" [innerHTML]="modeHtml"></div><div>{{tdivHtml}}</div>
     <div *ngIf="numValDistMsg" class="vdh-loading">{{numValDistMsg}}</div>
     <app-num-value-distro-component

@@ -90,7 +90,7 @@ export class DataTableHeader {
 
   minimizeColumn(col: string) {
     this.dataTableService.dataFilSrtTracker[col].minimize = true
-    this.dataTableService.sortOrder = this.dataTableService.sortOrder.filter( (s: any) => { return s !== col })
+    this.dataTableService.sortOrder = this.dataTableService.sortOrder.filter( (s: any) => s !== col )
     this.minimize.emit(col)
   }
 
@@ -199,8 +199,10 @@ export class DataTableHeader {
                 for(i; i < len; i++)
                     wids.push(els[i].scrollWidth)
                 useWid =wids.sort()[(len-1)]
-                const cswid = (Math.max(useWid+1))
-                this.updateUiColCellTheme("width", cswid, prop)
+                if(useWid && useWid > 0){
+                    const cswid = (Math.max(useWid+1))
+                    this.updateUiColCellTheme("width", cswid, prop)
+                }
             }
         }
     }

@@ -114,10 +114,12 @@ export class DataCellComponent {
           for(i; i < len; i++)
               wids.push(els[i].scrollWidth)
           useWid =wids.sort()[(len-1)]
-          const cswid = (Math.max(useWid+1))
-          this.dataTableService.currColumnEdit = elCol
-          this.updateUiColCellTheme("width", cswid)
-          setTimeout( () => this.dataTableService.currColumnEdit = null)
+          if(useWid){
+            const cswid = (Math.max(useWid+1))
+            this.dataTableService.currColumnEdit = elCol
+            this.updateUiColCellTheme("width", cswid)
+            setTimeout( () => this.dataTableService.currColumnEdit = null)
+          }
       }
   }
 

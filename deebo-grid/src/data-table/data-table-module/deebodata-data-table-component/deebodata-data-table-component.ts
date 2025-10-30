@@ -62,8 +62,10 @@ export class DeebodataDataTableComponent {
 
     @HostListener('window:mouseup', ['$event'])
     onWindowMouseUp(e: MouseEvent) {
-        if(this.tblDragService.listenForMouseUp)
+        if(this.tblDragService.listenForMouseUp){
             this.tblDragService.handleColResMouseUp(e)
+            this.dataTableBody?.nativeElement.scrollBy(1, 0)
+        }
         if(this.tblDragService.listenForColMvMouseUp)
           this.tblDragService.handleColMoveMouseUp(e)
     }
@@ -105,6 +107,7 @@ export class DeebodataDataTableComponent {
       columnsForCharts: string[] = []
       paginatorReady = false;
       handlingSelRows = false
+      columnOfInterest: string = ""
       hiddenCols: string[] = [];
       desRowHeight: string = "50"
       useColWid: string = "100px"
@@ -113,6 +116,7 @@ export class DeebodataDataTableComponent {
       currDDFilter: string = "";
       topLevelFilter: string = ""
       isScrolling = false
+      lockVScroll: boolean = false;
       isMultiFiltering = false;
       ddFilStyle: any = {}
       filterBuildUp: any[] = []
@@ -137,17 +141,22 @@ export class DeebodataDataTableComponent {
 
       ngOnInit() {
         this.dataTableService.getSampleData().subscribe( data => {
-          let tdata = this.convertNeededCols(data.result)
-          this.dataTableService.mainData = tdata.filter( function(d: any) { return true })
-          this.dataTableService.currFilData = tdata.filter( function(d: any) { return true })
-          this.dataTableService.mainDataLen = this.dataTableService.mainData.length
-          this.buildInitUiDataTable(tdata, null, null)//any 2 css colors
-          if(!this.dataTableService.errorLoading)
-            this.dataTableService.noDataMsg = "No data to display for this configuration.";
-          this.tblDragService.dTblHeightOutput.subscribe( h => this.setTableHeight(h) )
-          this.tblDragService.columnMove.subscribe( c => this.processColMove(c) )
-          this.dataTableService.currGrouping.subscribe( g => this.processGrouping(g) )
-        })
+            try{
+                let tdata = this.convertNeededCols(data.result)
+                this.dataTableService.mainData = tdata.filter( function(d: any) { return true })
+                this.dataTableService.currFilData = tdata.filter( function(d: any) { return true })
+                this.dataTableService.mainDataLen = this.dataTableService.mainData.length
+                this.buildInitUiDataTable(tdata, null, null)//any 2 css colors
+                if(!this.dataTableService.errorLoading)
+                  this.dataTableService.noDataMsg = "No data to display for this configuration.";
+                this.tblDragService.dTblHeightOutput.subscribe( h => this.setTableHeight(h) )
+                this.tblDragService.columnMove.subscribe( c => this.processColMove(c) )
+                this.dataTableService.currGrouping.subscribe( g => this.processGrouping(g) )
+            }catch(e: any) { 
+                this.dataTableService.noDataMsg = e.message 
+            }
+        }
+        )
       }
 
         getAllColsAtRuntime(excludeHidden: any) {
@@ -265,11 +274,8 @@ export class DeebodataDataTableComponent {
         }
 
         processGrouping(group: any) {
-            if(!group){
-                this.currGroupValues = []
-                this.dataTableService.currGroup = ""
+            if(!group)
                 return this.resetCurrentData()
-            }
             this.rows = []
             this.dtChecks = []
             this.dataTableService.currSelRows = []
@@ -867,6 +873,8 @@ export class DeebodataDataTableComponent {
           const top = event.target.scrollTop
           const left = event.target.scrollLeft
           /*horiz scroll*/
+          if(this.currGroupValues.length || this.showCharts || this.lockVScroll)
+              return;
           if(left !== this.horizRest){
               if(left > 0)
                   head.style.marginLeft = -left + "px"
@@ -882,7 +890,7 @@ export class DeebodataDataTableComponent {
           }
           /*horiz scroll*/
           /*vert scroll*/
-          if(top === this.verticalRest || this.currGroupValues.length || this.showCharts)
+          if(top === this.verticalRest)
               return;
           this.isScrolling = true
           if(top > this.verticalRest){
@@ -900,6 +908,7 @@ export class DeebodataDataTableComponent {
         }
 
     handleScrollEnd() {
+        this.lockVScroll = false
         if(this.currGroupValues.length)
             return setTimeout( () => { this.dataTableService.gridScrollEndWhileGrouped.next(true) })
         this.setDataRowHgtsById()
@@ -1190,13 +1199,11 @@ export class DeebodataDataTableComponent {
             const cols = this.getAllColsAtRuntime(null);
             const colLen = cols.length - this.getMiniColCount()
             const rawCol = column || this.common.replaceUniSep(this.dataTableService.currColumnEdit)
-            this.columnHeaders = this.columnHeaders.map( c => {
-                if(c && c.column === rawCol){
-                    c.width = val + "px"
-                    this.dataTableService.dataFilSrtTracker[c.column]["colWidth"] = val + "px"
-                }
-                return c
-            })
+            const thecol = this.columnHeaders.find( c => (c && c.column === rawCol))
+            if(thecol){
+                thecol.width = (val + "px")
+                this.dataTableService.dataFilSrtTracker[thecol.column]["colWidth"] = (val + "px")
+            }
             let i = 0
             const toResize = this.rows.filter( r => r.cells?.length)
             const len = toResize.length
@@ -1211,10 +1218,12 @@ export class DeebodataDataTableComponent {
                     })
                 }
             }
-            const allColW = this.getAllColWidth(colLen)
-            this.setDataRowWidthsOnMinimize(allColW)
-            setTimeout( () => { this.setRowSelChecksPlacement() })
-            this.testHideMinBtn()
+            setTimeout( () => { 
+                const allColW = this.getAllColWidth(colLen)
+                this.setDataRowWidthsOnMinimize(allColW)
+                this.setRowSelChecksPlacement() 
+                this.testHideMinBtn()
+            })
         }
     }
 
@@ -1245,10 +1254,7 @@ export class DeebodataDataTableComponent {
             const useHgt = Math.floor(rHgt) + "px";
             const row = this.dataTableHeaders.nativeElement
             row["style"]["height"] = useHgt
-            this.columnHeaders = this.columnHeaders.map( c => {
-                c.height = useHgt
-                return c
-            })
+            this.columnHeaders.forEach( c => {c.height = useHgt})
             setTimeout( () => { this.setRowSelChecksPlacement() })
         }
 
@@ -1316,7 +1322,8 @@ export class DeebodataDataTableComponent {
         this.rows = []
         this.changedIds = []
         this.dtChecks = []
-        this.horizRest = 0
+        if(!this.currGroupValues.length)//only if not grouped
+            this.horizRest = 0
         tbody.scrollTop = 0
         this.verticalRest = 0
         let didXScrl = false;
@@ -1326,9 +1333,13 @@ export class DeebodataDataTableComponent {
         const len = this.dataTableService.currFilData.length;
         if(!len)//always just add 1
             return setTimeout( () => { this.styleEmptyFilDataRow(tbody, tbodyX) })
-        if(this.currGroupValues.length)//don't add to rows here
+        if(this.currGroupValues.length){//don't add to rows here
+            if(field)
+                this.columnOfInterest = field
             return this.dataTableService.gridEventWhileGrouped.next(true);
-        const colLen = this.columnHeaders?.length
+        }
+        const uCols = this.columnHeaders?.filter( c => !c.minimized )
+        const colLen = uCols.length
         const addCell = (text: any, prop: string | null, row: DataRow, indx: number) => {
             if(prop && row){
                 const notNum = (this.dataTableService.figureFilterType(prop) != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase())) ? true : false
@@ -1357,7 +1368,8 @@ export class DeebodataDataTableComponent {
             if(field && field === prop && !didXScrl){
                 setTimeout( () => {
                     tbody.scrollLeft = tbodyX
-                    thead.scrollLeft = tbodyX
+                    if(tbodyX > 0)
+                        thead.style.marginLeft = (-tbodyX + "px")
                     this.horizRest = tbodyX
                 }, 100)
                 didXScrl = true
@@ -1368,7 +1380,12 @@ export class DeebodataDataTableComponent {
         this.maxCols = this.setMaxCols()
         let horizLim = Math.min(this.maxCols, colLen)
         if(field && field !== "topLevelDataFilter"){
-            const indOfScrl = Math.min(this.columnHeaders.map( c => c.column).indexOf(field)) + 3
+            const vlen: number =this.dataTableService.visibleCols.length
+            let indOfScrl: number = uCols.map( c => c.column).indexOf(field) + 1
+            const indInVis: number = this.dataTableService.visibleCols.indexOf(field)
+            const diff = vlen - indInVis
+            if(diff > 0)
+                indOfScrl += diff
             horizLim = indOfScrl
         }
         for(n; n < limit; n++){
@@ -1379,8 +1396,9 @@ export class DeebodataDataTableComponent {
                 this.rows.push(row)
                 let k = 0
                 for(k; k < horizLim; k++){
-                    const col = this.columnHeaders[k].column
-                    addCell(item[col], col, row, index)
+                    const col = uCols[k]?.column
+                    if(col)
+                        addCell(item[col], col, row, index)
                 }
             }
         }
@@ -1400,6 +1418,7 @@ export class DeebodataDataTableComponent {
                     this.setLastRowIndex()
                 }
                 this.dataTableService.setIdealColumnWidth.next(true)
+                setTimeout( () => {this.dataTableBody.nativeElement.scrollBy(1, 0)})
             }, 350)
         }
         return this.setHoldingCheckCls()
@@ -1425,17 +1444,22 @@ export class DeebodataDataTableComponent {
         this.dataTableService.gridEventWhileGrouped.next(true)
     }
 
-    maximizeColCells(col: string) {
+    maximizeColCells(col: string, fullClear?: boolean) {
         this.dataTableService.dataFilSrtTracker[col].minimize = false
-        this.minimizeColEls(col)
+        this.minimizeColEls(col, fullClear)
     }
 
-    minimizeColEls(col: string) {
-        this.columnHeaders = this.columnHeaders.map( c => {
-            if(c && c.column === col)
-                c.minimized = !c.minimized
-            return c
-        }) 
+    minimizeColEls(col: string, fullClear?: boolean) { 
+        this.lockVScroll = true
+        if(!fullClear)
+            setTimeout( () => { this.lockVScroll = false }, 400)
+        const thecol = this.columnHeaders.find( c => c.column === col)
+        if(thecol){
+            if(this.dataTableService.dataFilSrtTracker[col].colWidth === "1px")//still not sure how/why this happens
+                this.dataTableService.dataFilSrtTracker[col].colWidth = "150px";
+            thecol.width = this.dataTableService.dataFilSrtTracker[col].colWidth || this.useColWid;
+            thecol.minimized = !thecol.minimized
+        }
         this.rows = this.rows.map( r => {
             r.cells = r.cells?.map( c => {
                 if(c && c.column === col)
@@ -1448,7 +1472,21 @@ export class DeebodataDataTableComponent {
             this.hiddenCols.push(col)
         else
             this.hiddenCols = this.hiddenCols.filter( c => c !== col)
-        setTimeout( () => { this.setTableWidthOnChange() })
+        setTimeout( () => { 
+            if(!fullClear || (fullClear && this.hiddenCols.length === 1)){
+                this.setTableWidthOnChange()
+                this.dataTableBody.nativeElement.scrollBy(1, 0)
+                this.scrollAllGBPanels()
+            }
+        })
+    }
+
+    scrollAllGBPanels() {
+        let i = 0
+        const els = document.getElementsByClassName("group-panel-grid")
+        const len = els.length
+        for(i; i < len; i++)
+            els[i].scrollBy(1, 0)
     }
 
     setTableWidthOnChange() {
@@ -1460,7 +1498,7 @@ export class DeebodataDataTableComponent {
         this.useColWid = Math.ceil(bodyW/Math.min(colLen, this.maxCols)) + "px";
         setTimeout( () => { 
             this.setDataRowWidthsOnMinimize(this.getAllColWidth(colLen))
-        }, 320)
+        }, 375)
         this.setHoldingCheckCls()
         this.setColsOnVisScreen()
         setTimeout( () => { this.setColHeaderHgt() })
@@ -1503,7 +1541,8 @@ export class DeebodataDataTableComponent {
     clearHiddenCols() {
         const len = this.hiddenCols.length
         for(var i = (len-1); i >= 0; i--)
-            this.maximizeColCells(this.hiddenCols[i])
+            this.maximizeColCells(this.hiddenCols[i], true)
+        setTimeout( () => { this.lockVScroll = false }, 500)
     }
 
     clearFilInputs() {
@@ -1517,6 +1556,16 @@ export class DeebodataDataTableComponent {
         }
     }
 
+    clearGroupBySels() {
+        let i = 0
+        const len = this.canGroupBy.length
+        for(i; i < len; i++){
+            const el = <HTMLInputElement>document.getElementById("groupby" + this.canGroupBy[i])
+            if(el)
+                el.checked = false
+        }
+    }
+
     resetCurrentData() {
         this.topLevelFilter = ""
         this.dataTableService.sortOrder = []
@@ -1525,6 +1574,10 @@ export class DeebodataDataTableComponent {
         this.removeAllFreezeCols()
         this.clearFilInputs()
         this.resetVisCols()
+        this.clearGroupBySels()
+        this.columnOfInterest = ""
+        this.currGroupValues = []
+        this.dataTableService.currGroup = ""
         this.dataTableService.resetFilSrtTracker()
         this.dataTableService.currFilData = this.dataTableService.mainData.filter( d => { return true })
         this.renderCurrData(null)

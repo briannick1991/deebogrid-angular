@@ -319,8 +319,8 @@ export class DataTableService {
                         colVal = colVal.toLocaleLowerCase()
                     if(!comparator){//what we did originally
                         if(ddVals && ddVals.length){
-                            const chkdVs = ddVals.filter( (d: any) => { return d.checked }).
-                            map( (v: any) => { return typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value })
+                            const chkdVs = ddVals.filter( (d: any) => d.checked ).
+                            map( (v: any) => typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value )
                             return chkdVs.indexOf(colVal) > -1
                         } else {
                             if(typeof colVal === "string")
@@ -334,8 +334,8 @@ export class DataTableService {
                     } else {
                         if(comparator === "Equals"){
                             if(ddVals && ddVals.length){
-                                const chkdVs = ddVals.filter( (d: any) => { return d.checked }).
-                                map( (v: any) => { return typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value })
+                                const chkdVs = ddVals.filter( (d: any) => d.checked ).
+                                map( (v: any) => typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value )
                                 return chkdVs.indexOf(colVal) > -1
                             } else {
                                 if(this.common.isADateObject(filterVal) && this.common.isADateObject(colVal))
@@ -345,8 +345,8 @@ export class DataTableService {
                         }
                         if(comparator === "Not Equal" || comparator === "Not on"){
                             if(ddVals && ddVals.length){
-                                const chkdVs = ddVals.filter( (d: any) => { return !d.checked }).
-                                map( (v: any) => { return typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value })
+                                const chkdVs = ddVals.filter( (d: any) => !d.checked ).
+                                map( (v: any) => typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value )
                                 return chkdVs.indexOf(colVal) > -1
                             } else {
                                 if(this.common.isADateObject(filterVal) && this.common.isADateObject(colVal))
@@ -369,7 +369,12 @@ export class DataTableService {
                         if(comparator === "Greater Than or Equal")
                             return colVal >= filterVal
                         if(comparator === "Not Empty"){
-                            if((ddVals && ddVals.length) || (!filterVal && filterVal != "0"))
+                            if(ddVals && ddVals.length && this.hasUnchkdDDVals(this.dataFilSrtTracker[field])){
+                                const chkdVs = ddVals.filter( (d: any) => d.checked && d.value ).
+                                map( (v: any) => typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value )
+                                return chkdVs.indexOf(colVal) > -1
+                            }
+                            if(!filterVal && filterVal != "0")
                                 return !!colVal || (colVal === 0)//just return non empty
                             //treat it like normal filter
                             if(typeof colVal === "string")
