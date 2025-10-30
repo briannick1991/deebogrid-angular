@@ -1490,12 +1490,9 @@ export class DeebodataDataTableComponent {
     }
 
     setTableWidthOnChange() {
-        const body = this.dataTableBody.nativeElement
         const cols = this.getAllColsAtRuntime(null)
         this.maxCols = this.setMaxCols()
-        const bodyW = body.getBoundingClientRect().width-16
         const colLen = cols.length - this.getMiniColCount()
-        this.useColWid = Math.ceil(bodyW/Math.min(colLen, this.maxCols)) + "px";
         setTimeout( () => { 
             this.setDataRowWidthsOnMinimize(this.getAllColWidth(colLen))
         }, 375)
